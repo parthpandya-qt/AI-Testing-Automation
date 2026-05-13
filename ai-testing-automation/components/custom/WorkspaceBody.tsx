@@ -3,13 +3,48 @@
 import React, { useContext } from "react";
 import { UserDetailContext } from "@/context/userDetailContext";
 import Image from "next/image";
-import { Card } from "@/components/ui/card";
-
+import { Card, CardContent } from "@/components/ui/card";
+import EmptyWorkspace from "./EmptyWorkspace";
+import { useRouter } from "next/navigation";
+import { NextApiRequest } from "next";
+import { useState, useEffect } from "react";
 function WorkspaceBody() {
+  
+  const [token, setToken] = useState<string | null>(null);
   const userDetails = useContext(UserDetailContext);
+  const router = useRouter();
+
+  useEffect(() => {
+    getGithubUserToken();
+  }, []);
+
+
+  const getGithubUserToken = async () => {
+  try {
+    const res = await fetch("/api/github/token");
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch token");
+    }
+
+    const data = await res.json();
+    setToken(data.token);
+
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+};
+
+
+  const onAddRepo = () => {
+    router.push("/api/github");
+  };
+
+  
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
       
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -22,19 +57,20 @@ function WorkspaceBody() {
           </p>
         </div>
 
-        <div className="bg-linear-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl shadow-md">
-          <p className="text-xs opacity-80">Remaining Credits</p>
-          <h2 className="text-lg font-semibold">
-            {userDetails?.credits}
-          </h2>
-        </div>
-      </div>
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl shadow-md">
+            <p className="text-xs opacity-80">Remaining Credits</p>
 
-      
+            <h2 className="text-lg font-semibold">
+                {userDetails?.credits}
+            </h2>
+        </div>
+        </div>
+
+      {/* GitHub Connect Card */}
       <Card className="p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300">
         <div className="flex items-center justify-between">
           
-       
+          {/* Left Section */}
           <div className="flex items-center gap-4">
             <div className="bg-gray-100 p-3 rounded-xl">
               <Image
@@ -55,11 +91,25 @@ function WorkspaceBody() {
             </div>
           </div>
 
+          {/* Button */}
+            <div>
+                {!token ?
+                <button onClick ={onAddRepo} className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
+                    Setup
+                </button>:
+                <button onClick ={onAddRepo} className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
+                    + Add
+                </button>}
+                
+            </div>
           
-          <button className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
-            + Add Repo
-          </button>
         </div>
+      </Card>
+      <Card>
+        <CardContent>
+            <EmptyWorkspace />
+        </CardContent>
+        
       </Card>
 
      

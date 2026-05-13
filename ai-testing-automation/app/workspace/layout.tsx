@@ -3,7 +3,7 @@ import WorkespaceHeader from '@/components/custom/WorkspaceHeader';
 
 function WorkSpacelayout({children}: Readonly<{children: React.ReactNode}>) {
   return (
-    <div className = "mx-auto max-w-4xl">
+    <div className = "mx-auto ">
       <WorkespaceHeader />
       {children}
     </div>
