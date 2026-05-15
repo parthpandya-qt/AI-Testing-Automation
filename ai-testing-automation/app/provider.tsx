@@ -16,7 +16,7 @@ function Provider({
     try {
       const result = await axios.post('/api/users', {})
       console.log(result.data)
-      setUserdetails(result.data?.user);
+      setUserdetails(result.data);
     } catch (error) {
       console.log(error)
     }
@@ -30,7 +30,10 @@ function Provider({
 
 
   return (
-    <UserDetailContext.Provider value = {userDetails} >
+    <UserDetailContext.Provider 
+    value={{
+    userDetails
+  }} >
       <div>
         {children}
       </div>

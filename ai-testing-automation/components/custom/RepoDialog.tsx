@@ -4,50 +4,89 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 
 import axios from "axios";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useContext,
+} from "react";
 
-type Repo ={
-    id:number,
-    name:string,
-    full_name:string,
-    description:string | null,
-    html_url:string,
-    updated_at:string,
-    language:string | null,
-    default_branch:string,
-    owner:string
+import { UserDetailContext } from "@/context/userDetailContext";
 
-}
-
+type Repo = {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  html_url: string;
+  updated_at: string;
+  language: string | null;
+  default_branch: string;
+  owner: string;
+  private_: boolean;
+};
 
 function RepoDialog() {
-    
-  const [repoList, setrepoList] = useState<Repo[]>([]);
+  const [repoList, setRepoList] = useState<Repo[]>([]);
+  const [repoSearch, setRepoSearch] = useState<string>("");
+  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
+
+  const context = useContext(UserDetailContext);
+  const userDetails = context?.userDetails;
 
   useEffect(() => {
     getRepoList();
   }, []);
-
-  
-
 
   const getRepoList = async () => {
     try {
       const result = await axios.get("/api/github/repos");
 
       console.log(result.data);
-        setrepoList(result.data.repos);
 
+      setRepoList(result.data.repos);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const filteredRepoList = useMemo(() => {
+    const q = repoSearch.toLowerCase().trim();
+
+    if (!q) return repoList;
+
+    return repoList.filter((repo) =>
+      repo.name.toLowerCase().includes(q)
+    );
+  }, [repoSearch, repoList]);
+
+  const saveDatabase = async (repo: Repo) => {
+    try {
+      const result = await axios.post("/api/user-repo", {
+        repoId: repo.id,
+        userId: userDetails?.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        description: repo.description,
+        html_url: repo.html_url,
+        updated_at: repo.updated_at,
+        language: repo.language,
+        default_branch: repo.default_branch,
+        owner: repo.owner,
+        private_: repo.private_,
+      });
+
+      console.log(result.data);
     } catch (error) {
       console.log(error);
     }
@@ -56,7 +95,11 @@ function RepoDialog() {
   return (
     <div>
       <Dialog>
-        <DialogTrigger>Open</DialogTrigger>
+        <DialogTrigger asChild>
+          <Button>
+            Open
+          </Button>
+        </DialogTrigger>
 
         <DialogContent>
           <DialogHeader>
@@ -65,42 +108,75 @@ function RepoDialog() {
             </DialogTitle>
 
             <DialogDescription>
-              Search and connect one of your Github repositories
+              Search and connect one of your GitHub repositories
               to start generating AI-powered tests for your code.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[400px] overflow-y-auto mt-4">
-            {
-                repoList.map((repo)=>(
-                    <div key={repo.id} className="border p-4 rounded-lg mb-4">
-                        <h3 className="font-bold text-lg">{repo.name}</h3>
-                        <p className="text-sm text-gray-500">{repo.description}</p>
-                        <a href={repo.html_url} target="_blank" className="text-blue-500 hover:underline">
-                            View on GitHub
-                        </a>
-                        <p className="text-xs text-gray-400 mt-2">
-                            Language:{repo.language} | Updated at: {new Date(repo.updated_at).toLocaleDateString()}
-                        </p>
-                    </div>
-                ))
-            }
+
+          <input
+            type="text"
+            placeholder="Search by Repo Name"
+            onChange={(e) => setRepoSearch(e.target.value)}
+            className="mt-5 w-full border rounded-lg p-2 outline-none"
+          />
+
+          <div className="max-h-[400px] overflow-y-auto mt-7 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            {filteredRepoList.map((repo) => (
+              <div
+                key={repo.id}
+                onClick={() => setSelectedRepo(repo)}
+                className={`border p-4 rounded-lg mb-4 cursor-pointer transition-all ${
+                  selectedRepo?.id === repo.id
+                    ? "bg-gray-200"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                <h3 className="font-bold text-lg">
+                  {repo.name}
+                </h3>
+
+                <p className="text-sm text-gray-500">
+                  {repo.description || "No description available"}
+                </p>
+
+                <a
+                  href={repo.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  View on GitHub
+                </a>
+
+                <p className="text-xs text-gray-700 mt-2">
+                  Language: {repo.language || "Unknown"} |
+                  Updated at:{" "}
+                  {new Date(
+                    repo.updated_at
+                  ).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
           </div>
 
-          <div>
-            <DialogFooter className="flex flex-col gap-4">
-
-              <DialogClose asChild>
-                <Button variant="outline">
-                  Cancel
-                </Button>
-              </DialogClose>
-
-              <Button>
-                + Add
+          <DialogFooter className="flex flex-col gap-4">
+            <DialogClose asChild>
+              <Button variant="outline">
+                Cancel
               </Button>
+            </DialogClose>
 
-            </DialogFooter>
-          </div>
+            <Button
+              onClick={() => {
+                if (selectedRepo) {
+                  saveDatabase(selectedRepo);
+                }
+              }}
+              className="bg-black text-white px-5 py-2.5 rounded-xl font-medium"
+            >
+              + Add
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

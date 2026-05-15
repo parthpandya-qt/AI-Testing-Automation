@@ -1,5 +1,5 @@
 import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
-import { Languages } from "lucide-react";
+
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,10 +17,11 @@ export const repositories = pgTable("repositories",{
   fullName:text("full_name").notNull(),
   private:integer("private").notNull(),
   htmlUrl:text("html_url").notNull(),
-  descreption:text("descreption").notNull(),
-  updatedAt:timestamp("updated_at").notNull(),
-  language:text("language").notNull(),
-  owner:text("owner").notNull()
+  description:text("description"),
+  updatedAt:timestamp("updated_at"),
+  language:text("language"),
+  owner:text("owner").notNull(),
+  defaultBranch:text("default_branch").notNull()
 })
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

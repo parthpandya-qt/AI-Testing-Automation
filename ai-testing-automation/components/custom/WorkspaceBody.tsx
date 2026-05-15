@@ -13,7 +13,9 @@ import RepoDialog from "./RepoDialog";
 function WorkspaceBody() {
   
   const [token, setToken] = useState<string | null>(null);
-  const userDetails = useContext(UserDetailContext);
+  const context = useContext(UserDetailContext);
+  const userDetails = context?.userDetails;
+  
   const router = useRouter();
 
   useEffect(() => {

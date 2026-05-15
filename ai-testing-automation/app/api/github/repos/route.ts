@@ -1,4 +1,3 @@
-import { Html } from "next/document";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -47,6 +46,7 @@ export async function GET(req: NextRequest) {
       language: repo.language,
       default_branch: repo.default_branch,
       owner:repo.owner.login,
+      private_: repo.private
     })),
   });
 }
