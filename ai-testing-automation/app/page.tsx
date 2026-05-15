@@ -2,6 +2,13 @@
 
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
+import {UserDetailContext} from '@/context/userDetailContext';
+import { useRouter } from 'next/navigation';
+
+const router = useRouter();
+
+
+const userDetail = React.useContext(UserDetailContext);
 
 const features = [
   {
@@ -47,10 +54,19 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const onScroll = () => setScrolled(window.scrollY > 20);
+
+  window.addEventListener('scroll', onScroll);
+
+  // Redirect authenticated user
+  if (userDetail) {
+    router.push('/workspace');
+  }
+
+  return () => window.removeEventListener('scroll', onScroll);
+}, [userDetail, router]);
+
+  
 
   return (
     <>
