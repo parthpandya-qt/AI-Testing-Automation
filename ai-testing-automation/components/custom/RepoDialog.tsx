@@ -20,10 +20,10 @@ type Repo ={
     id:number,
     name:string,
     full_name:string,
-    description:string,
+    description:string | null,
     html_url:string,
     updated_at:string,
-    language:string,
+    language:string | null,
     default_branch:string,
     owner:string
 
@@ -46,8 +46,7 @@ function RepoDialog() {
       const result = await axios.get("/api/github/repos");
 
       console.log(result.data);
-
-      return result.data;
+        setrepoList(result.data.repos);
 
     } catch (error) {
       console.log(error);
@@ -70,7 +69,7 @@ function RepoDialog() {
               to start generating AI-powered tests for your code.
             </DialogDescription>
           </DialogHeader>
-          <div>
+          <div className="max-h-[400px] overflow-y-auto mt-4">
             {
                 repoList.map((repo)=>(
                     <div key={repo.id} className="border p-4 rounded-lg mb-4">
