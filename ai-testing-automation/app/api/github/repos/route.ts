@@ -1,3 +1,4 @@
+import { Html } from "next/document";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -36,6 +37,16 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    repos: allRepo,
+    repos: allRepo.map((repo)=>({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      description: repo.description,
+      html_url: repo.html_url,
+      updated_at: repo.updated_at,
+      language: repo.language,
+      default_branch: repo.default_branch,
+      owner:repo.owner.login,
+    })),
   });
 }

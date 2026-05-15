@@ -14,13 +14,32 @@ import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 
 import axios from "axios";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+type Repo ={
+    id:number,
+    name:string,
+    full_name:string,
+    description:string,
+    html_url:string,
+    updated_at:string,
+    language:string,
+    default_branch:string,
+    owner:string
+
+}
+
 
 function RepoDialog() {
+    
+  const [repoList, setrepoList] = useState<Repo[]>([]);
 
   useEffect(() => {
     getRepoList();
   }, []);
+
+  
+
 
   const getRepoList = async () => {
     try {
@@ -51,6 +70,22 @@ function RepoDialog() {
               to start generating AI-powered tests for your code.
             </DialogDescription>
           </DialogHeader>
+          <div>
+            {
+                repoList.map((repo)=>(
+                    <div key={repo.id} className="border p-4 rounded-lg mb-4">
+                        <h3 className="font-bold text-lg">{repo.name}</h3>
+                        <p className="text-sm text-gray-500">{repo.description}</p>
+                        <a href={repo.html_url} target="_blank" className="text-blue-500 hover:underline">
+                            View on GitHub
+                        </a>
+                        <p className="text-xs text-gray-400 mt-2">
+                            Language:{repo.language} | Updated at: {new Date(repo.updated_at).toLocaleDateString()}
+                        </p>
+                    </div>
+                ))
+            }
+          </div>
 
           <div>
             <DialogFooter className="flex flex-col gap-4">
