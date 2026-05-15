@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import {UserDetailContext} from '@/context/userDetailContext';
+
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 
-const router = useRouter();
 
 
-const userDetail = React.useContext(UserDetailContext);
+
+
 
 const features = [
   {
@@ -51,24 +53,31 @@ const stats = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const { isSignedIn, isLoaded } = useUser();
+
 
   useEffect(() => {
   const onScroll = () => setScrolled(window.scrollY > 20);
 
   window.addEventListener('scroll', onScroll);
 
-  // Redirect authenticated user
-  if (userDetail) {
-    router.push('/workspace');
-  }
-
-  return () => window.removeEventListener('scroll', onScroll);
-}, [userDetail, router]);
-
   
 
-  return (
+  return () => {
+    window.removeEventListener('scroll', onScroll);
+  };
+});
+useEffect(() => {
+  if (!isLoaded) return;
+
+  if (isSignedIn) {
+    router.push('/workspace');
+  }
+}, [isSignedIn, isLoaded, router]);
+
+return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
