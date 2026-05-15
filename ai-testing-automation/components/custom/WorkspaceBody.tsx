@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { UserDetailContext } from "@/context/userDetailContext";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import EmptyWorkspace from "./EmptyWorkspace";
 import { useRouter } from "next/navigation";
-import { NextApiRequest } from "next";
 import { useState, useEffect } from "react";
+import RepoDialog from "./RepoDialog";
+
+
 function WorkspaceBody() {
   
   const [token, setToken] = useState<string | null>(null);
@@ -97,9 +99,10 @@ function WorkspaceBody() {
                 <button onClick ={onAddRepo} className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
                     Setup
                 </button>:
-                <button onClick ={onAddRepo} className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
-                    + Add
-                </button>}
+                <div className = "bg-black text-white px-4 py-2 rounded-xl">
+                  <RepoDialog />
+                </div>
+                }
                 
             </div>
           
