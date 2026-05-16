@@ -54,7 +54,7 @@ function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => voi
     try {
       const result = await axios.get("/api/github/repos");
 
-      console.log(result.data);
+      //console.log(result.data);
 
       setRepoList(result.data.repos);
     } catch (error) {
@@ -88,7 +88,7 @@ function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => voi
         private_: repo.private_,
       });
 
-      console.log(result.data);
+      //console.log(result.data);
       setIsOpen(false);
       setRefreshPage(true);
     } catch (error) {

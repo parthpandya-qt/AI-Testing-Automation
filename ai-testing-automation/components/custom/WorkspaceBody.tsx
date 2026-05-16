@@ -8,12 +8,32 @@ import EmptyWorkspace from "./EmptyWorkspace";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import RepoDialog from "./RepoDialog";
+import axios from "axios";
+import UserReposLists from "./UserReposLists";
+
+
+
+
+type UserRepo = {
+  id: number;
+  name: string;
+  fullName: string;
+  description: string | null;
+  html_url: string;
+  updatedAt: string;
+  language: string | null;
+  defaultBranch: string;
+  owner: string;
+  private_: boolean;
+};
+
 
 
 function WorkspaceBody() {
   
   const [token, setToken] = useState<string | null>(null);
   const [refreshPage, setRefreshPage] = useState(false);
+  const [userRepos, setUserRepos] = useState<UserRepo[]>([]);
   const context = useContext(UserDetailContext);
   const userDetails = context?.userDetails;
   
@@ -21,7 +41,10 @@ function WorkspaceBody() {
 
   useEffect(() => {
     getGithubUserToken();
+   
   }, []);
+
+  useEffect(() => {userDetails && getUserRepoList()},[userDetails])
 
 
   const getGithubUserToken = async () => {
@@ -46,7 +69,12 @@ function WorkspaceBody() {
     router.push("/api/github");
   };
 
-  
+  const getUserRepoList = async ()=>{
+      const result = await axios.get("./api/user-repo?userId=" + userDetails?.id)
+      
+      console.log(result)
+      setUserRepos(result.data);
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -136,7 +164,7 @@ function WorkspaceBody() {
       </Card>
       <Card>
         <CardContent>
-            <EmptyWorkspace />
+            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} />}
         </CardContent>
         
       </Card>

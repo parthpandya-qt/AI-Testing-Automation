@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {db, repositories} from "@/db";
+import {eq} from "drizzle-orm";
+
 
 
 export async function POST(req: NextRequest) {
@@ -26,4 +28,14 @@ export async function POST(req: NextRequest) {
         console.log(err);
         return NextResponse.json({error: "Failed to save repository"}, {status: 500});
     }
+}
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const userId:any = searchParams.get("userId");
+
+    if(!userId){
+        return NextResponse.json({error: "User ID is required"}, {status: 400});
+    }
+    const result  = await db.select().from(repositories).where(eq(repositories.userId,userId??0))
+    return NextResponse.json(result)
 }
