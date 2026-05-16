@@ -13,6 +13,7 @@ import RepoDialog from "./RepoDialog";
 function WorkspaceBody() {
   
   const [token, setToken] = useState<string | null>(null);
+  const [refreshPage, setRefreshPage] = useState(false);
   const context = useContext(UserDetailContext);
   const userDetails = context?.userDetails;
   
@@ -96,17 +97,40 @@ function WorkspaceBody() {
           </div>
 
           {/* Button */}
-            <div>
-                {!token ?
-                <button onClick ={onAddRepo} className="bg-black hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-200 hover:scale-105 cursor-pointer">
-                    Setup
-                </button>:
-                <div className = "bg-black text-white px-4 py-2 rounded-xl">
-                  <RepoDialog />
-                </div>
-                }
-                
-            </div>
+<div className="flex items-center gap-4">
+  {!token ? (
+    <button
+      onClick={onAddRepo}
+      className="
+        bg-black
+        text-white
+        px-5
+        py-2.5
+        rounded-xl
+        font-medium
+        transition-all
+        duration-200
+        hover:scale-105
+        active:scale-95
+        cursor-pointer
+      "
+    >
+      Setup
+    </button>
+  ) : (
+    <div
+      className="
+        transition-all
+        duration-200
+        hover:scale-105
+        active:scale-95
+        cursor-pointer
+      "
+    >
+      <RepoDialog setRefreshPage={setRefreshPage} />
+    </div>
+  )}
+</div>
           
         </div>
       </Card>

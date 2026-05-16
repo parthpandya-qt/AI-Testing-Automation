@@ -36,10 +36,12 @@ type Repo = {
   private_: boolean;
 };
 
-function RepoDialog() {
+function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => void}) {
   const [repoList, setRepoList] = useState<Repo[]>([]);
   const [repoSearch, setRepoSearch] = useState<string>("");
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  
 
   const context = useContext(UserDetailContext);
   const userDetails = context?.userDetails;
@@ -87,6 +89,8 @@ function RepoDialog() {
       });
 
       console.log(result.data);
+      setIsOpen(false);
+      setRefreshPage(true);
     } catch (error) {
       console.log(error);
     }
@@ -94,7 +98,7 @@ function RepoDialog() {
 
   return (
     <div>
-      <Dialog>
+      <Dialog open={isOpen} onOpenChange={(open)=>{setIsOpen(open)}}>
         <DialogTrigger asChild>
           <Button>
             Open
@@ -167,13 +171,32 @@ function RepoDialog() {
             </DialogClose>
 
             <Button
-              onClick={() => {
+              onClick={(e) => {
+                const button = e.currentTarget;
+
+                button.classList.add("scale-95", "bg-gray-800");
+
+                setTimeout(() => {
+                  button.classList.remove("scale-95", "bg-gray-800");
+                }, 150);
+
                 if (selectedRepo) {
                   saveDatabase(selectedRepo);
                 }
               }}
-              className="bg-black text-white px-5 py-2.5 rounded-xl font-medium"
-            >
+              className="
+                bg-black
+                text-white
+                px-5
+                py-2.5
+                rounded-xl
+                font-medium
+                transition-all
+                duration-150
+                hover:scale-105
+                active:scale-95
+              "
+                >
               + Add
             </Button>
           </DialogFooter>
