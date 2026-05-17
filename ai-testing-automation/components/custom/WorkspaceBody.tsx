@@ -25,6 +25,7 @@ type UserRepo = {
   defaultBranch: string;
   owner: string;
   private_: boolean;
+  repoId: number;
 };
 
 
@@ -44,7 +45,11 @@ function WorkspaceBody() {
    
   }, []);
 
-  useEffect(() => {userDetails && getUserRepoList()},[userDetails])
+  useEffect(() => {
+  if (userDetails) {
+    getUserRepoList();
+  }
+}, [userDetails, refreshPage]);
 
 
   const getGithubUserToken = async () => {
@@ -164,7 +169,7 @@ function WorkspaceBody() {
       </Card>
       <Card>
         <CardContent>
-            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} />}
+            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} />}
         </CardContent>
         
       </Card>

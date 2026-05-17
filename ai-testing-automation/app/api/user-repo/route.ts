@@ -39,3 +39,19 @@ export async function GET(req: NextRequest) {
     const result  = await db.select().from(repositories).where(eq(repositories.userId,userId??0))
     return NextResponse.json(result)
 }
+
+
+export async function DELETE(req:NextRequest){
+    const { searchParams } = new URL(req.url);
+    const repoId:any = Number(searchParams.get("repoId"));
+    if(!repoId){
+        return NextResponse.json({error: "Repository ID is required"}, {status: 400});
+    }
+    try{
+        await db.delete(repositories).where(eq(repositories.repoId, repoId));
+        return NextResponse.json({message: "Repository deleted successfully"});
+    }catch(err:any){
+        console.log(err);
+        return NextResponse.json({error: "Failed to delete repository"}, {status: 500});
+    }   
+}

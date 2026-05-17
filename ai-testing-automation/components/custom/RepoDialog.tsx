@@ -25,6 +25,7 @@ import { UserDetailContext } from "@/context/userDetailContext";
 
 type Repo = {
   id: number;
+  repoId: number;
   name: string;
   full_name: string;
   description: string | null;
