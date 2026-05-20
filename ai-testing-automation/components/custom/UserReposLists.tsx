@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/accordion";
 import axios from "axios";
 
+import { ListChecks, CheckCircle2, XCircle, TrendingUp, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 type UserRepo = {
   id: number;
   name: string;
@@ -28,6 +31,13 @@ type Props = {
 };
 
 function UserReposLists({ repoList, setUserRepos }: Props) {
+  const totalTests = 0; 
+  const passedTests = 0;
+  const failedTests = 0;
+  const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100) : 0;
+
+
+
   const deleteRepo = async (a: number) => {
     const result = await axios.delete(`/api/user-repo?repoId=${a}`);
 
@@ -40,6 +50,7 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
 
   return (
     <div>
+      <h2 className="text-2xl font-medium mb-4">Your Repositories</h2>
       {repoList.map((repo, index) => (
         <Accordion
           type="single"
@@ -90,27 +101,62 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
             </AccordionTrigger>
 
             <AccordionContent>
-              <div className="border p-4 rounded-lg mb-4 cursor-pointer transition-all">
-                <h3 className="font-bold text-lg">{repo.name}</h3>
+    <div className='pt-4 space-y-5'>
 
-                <p className="text-sm text-gray-500">
-                  {repo.description || "No description available"}
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+
+            <StatusCard
+                title="Total Tests"
+                value={totalTests}
+                icon={<ListChecks className='h-5 w-5 text-blue-600' />}
+                bgColor="bg-blue-50"
+            />
+
+            <StatusCard
+                title="Passed"
+                value={passedTests}
+                icon={<CheckCircle2 className='h-5 w-5 text-green-600' />}
+                bgColor="bg-green-50"
+            />
+
+            <StatusCard
+                title="Failed"
+                value={failedTests}
+                icon={<XCircle className='h-5 w-5 text-red-600' />}
+                bgColor="bg-red-50"
+            />
+
+            <StatusCard
+                title="Pass Rate"
+                value={`${passRate}%`}
+                icon={<TrendingUp className='h-5 w-5 text-purple-600' />}
+                bgColor="bg-purple-50"
+            />
+
+        </div>
+
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4 bg-gray-50'>
+
+            <div>
+                <h3 className='font-medium'>
+                    Generate AI Test Cases
+                </h3>
+
+                <p className='text-sm text-gray-500 mt-1'>
+                    Analyze this repository and generate automated
+                    test cases using AI.
                 </p>
+            </div>
 
-                <a
-                  href={repo.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  View on GitHub
-                </a>
+            <Button className='gap-2'>
+                <Sparkles className='h-4 w-4' />
+                Generate Test Cases
+            </Button>
 
-                <p className="text-xs text-gray-700 mt-2">
-                  Language: {repo.language || "Unknown"}
-                </p>
-              </div>
-            </AccordionContent>
+        </div>
+
+    </div>
+</AccordionContent>
           </AccordionItem>
         </Accordion>
       ))}
@@ -119,3 +165,34 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
 }
 
 export default UserReposLists;
+
+
+
+
+
+function StatusCard({
+    title,
+    value,
+    icon,
+    bgColor
+}: {
+    title: string
+    value: string | number
+    icon: React.ReactNode
+    bgColor: string
+}) {
+    return (
+        <div className='border rounded-xl p-4 flex items-center justify-between bg-white'>
+            
+            <div>
+                <p className='text-sm text-gray-500'>{title}</p>
+                <h3 className='text-2xl font-semibold mt-1'>{value}</h3>
+            </div>
+
+            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${bgColor}`}>
+                {icon}
+            </div>
+
+        </div>
+    )
+}
