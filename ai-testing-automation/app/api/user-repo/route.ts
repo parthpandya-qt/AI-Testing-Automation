@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {db, repositories} from "@/db";
+import {db, repositories, TestCasesTable} from "@/db";
 import {eq} from "drizzle-orm";
 
 
@@ -48,10 +48,13 @@ export async function DELETE(req:NextRequest){
         return NextResponse.json({error: "Repository ID is required"}, {status: 400});
     }
     try{
-        await db.delete(repositories).where(eq(repositories.repoId, repoId));
+        const result1 = await db.delete(repositories).where(eq(repositories.repoId, repoId));
+        const result2 = await db.delete(TestCasesTable).where(eq(TestCasesTable.repoId, repoId));
+        
         return NextResponse.json({message: "Repository deleted successfully"});
     }catch(err:any){
         console.log(err);
         return NextResponse.json({error: "Failed to delete repository"}, {status: 500});
-    }   
-}
+    }
+    
+    }      

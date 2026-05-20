@@ -8,8 +8,12 @@ import {
 } from "@/components/ui/accordion";
 import axios from "axios";
 
-import { ListChecks, CheckCircle2, XCircle, TrendingUp, Sparkles } from "lucide-react";
+import { ListChecks, CheckCircle2, XCircle, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+import { UserDetailContext } from "@/context/userDetailContext";
+import test from "node:test";
+import TestCases from "./TestCases";
 
 type UserRepo = {
   id: number;
@@ -30,11 +34,37 @@ type Props = {
   setUserRepos: React.Dispatch<React.SetStateAction<UserRepo[]>>;
 };
 
+
+export type TestCasetype = {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  priority: string;
+  userId: string;
+  repoId: string;
+  repoName: string;
+  repoOwner: string;
+  branch: string;
+  targetRoute: string;
+  expectedResult: string;
+}
+
+
+
+
 function UserReposLists({ repoList, setUserRepos }: Props) {
   const totalTests = 0; 
   const passedTests = 0;
   const failedTests = 0;
   const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100) : 0;
+
+  const user  = React.useContext(UserDetailContext);
+  
+
+  const[loading, setLoading] = React.useState<boolean>(false);
+  const[testCaseLoading, setTestCaseLoading] = React.useState<boolean>(false);
+  const[testCases, setTestCases] = React.useState<TestCasetype[]>([]);
 
 
 
@@ -48,17 +78,60 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
     console.log(result.data);
   };
 
+  const handleGenerateTestCases = async (repo: UserRepo) => {
+    try {
+      setLoading(true);
+      console.log({
+    userId: user?.userDetails.id,
+    repoId: repo.repoId,
+    owner: repo.owner,
+    repo: repo.name,
+    branch: repo.defaultBranch,
+});
+      const result = await axios.post("/api/generate-test-cases", {
+        userId: user?.userDetails.id,
+        repoId: repo.repoId,
+        owner: repo.owner,
+        repo: repo.name,
+        branch: repo.defaultBranch,
+      });
+      console.log(result.data);
+      
+    } catch (error) {
+      console.log(error);
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  const addTestCases = async (repoId: number) => {
+    setTestCaseLoading(true);
+    const result = await axios.get("/api/test-cases?repoId=" + repoId);
+    
+    if(result.data.length > 0){
+      console.log(result.data);
+      setTestCases(result.data);
+      
+    }else{
+      console.log("No test cases found for this repository.");
+      setTestCases([]);
+    }
+    setTestCaseLoading(false);
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-medium mb-4">Your Repositories</h2>
-      {repoList.map((repo, index) => (
-        <Accordion
+      <Accordion
+          
           type="single"
           collapsible
           defaultValue="item-1"
-          key={index}
+          onValueChange={(value)=>{addTestCases(Number(value))}}
         >
-          <AccordionItem value="item-1">
+      {repoList.map((repo, index) => (
+        
+          <AccordionItem  key = {index} value={repo.repoId.toString()} className="border rounded-md mb-2">
             <AccordionTrigger className="w-full">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center space-x-4">
@@ -134,8 +207,17 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
             />
 
         </div>
+        
+        {!testCaseLoading && testCases.length > 0 && <TestCases testCaseList={testCases} onReload={() => handleGenerateTestCases(repo)}/>}
 
-        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4 bg-gray-50'>
+
+        {testCaseLoading ?(
+            <div className='flex items-center justify-center p-4'>
+                <Loader2 className='h-4 w-4 animate-spin' />
+            </div>
+        ):
+
+        testCases?.length==0&&<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4 bg-gray-50'>
 
             <div>
                 <h3 className='font-medium'>
@@ -147,19 +229,25 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
                     test cases using AI.
                 </p>
             </div>
-
-            <Button className='gap-2'>
-                <Sparkles className='h-4 w-4' />
+            
+            <Button className='gap-2' disabled={loading} onClick={()=>{handleGenerateTestCases(repo)}}>
+                {loading ? (
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                ) : (
+                    <Sparkles className='h-4 w-4' />
+                )}
                 Generate Test Cases
             </Button>
 
         </div>
+}
 
     </div>
 </AccordionContent>
           </AccordionItem>
-        </Accordion>
+       
       ))}
+      </Accordion>
     </div>
   );
 }
