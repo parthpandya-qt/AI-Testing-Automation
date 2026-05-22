@@ -49,7 +49,13 @@ export type TestCasetype = {
   targetRoute: string;
   expectedResult: string;
 }
+type statusType = {
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  passRate: number;
 
+}
 
 
 
@@ -66,6 +72,14 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
   const[testCaseLoading, setTestCaseLoading] = React.useState<boolean>(false);
   const[testCases, setTestCases] = React.useState<TestCasetype[]>([]);
 
+  const[statusData, setStatusData] = React.useState<statusType>(
+    { 
+      totalTests:0, 
+      passedTests:0,
+      failedTests:0,
+      passRate:0 
+    });
+
 
 
   const deleteRepo = async (a: number) => {
@@ -81,13 +95,7 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
   const handleGenerateTestCases = async (repo: UserRepo) => {
     try {
       setLoading(true);
-      console.log({
-    userId: user?.userDetails.id,
-    repoId: repo.repoId,
-    owner: repo.owner,
-    repo: repo.name,
-    branch: repo.defaultBranch,
-});
+      
       const result = await axios.post("/api/generate-test-cases", {
         userId: user?.userDetails.id,
         repoId: repo.repoId,
@@ -95,12 +103,13 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
         repo: repo.name,
         branch: repo.defaultBranch,
       });
-      console.log(result.data);
-      
+      //console.log(result.data);
+      await addTestCases(repo.repoId);
     } catch (error) {
       console.log(error);
     }finally{
       setLoading(false);
+      
     }
   }
 
@@ -111,13 +120,19 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
     if(result.data.length > 0){
       console.log(result.data);
       setTestCases(result.data);
-      
+      setStatusData({
+        totalTests: result.data.length,
+        passedTests: 0,
+        failedTests: 0,
+        passRate: 0
+      });
     }else{
       console.log("No test cases found for this repository.");
       setTestCases([]);
     }
     setTestCaseLoading(false);
   };
+
 
   return (
     <div>
@@ -180,28 +195,28 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
 
             <StatusCard
                 title="Total Tests"
-                value={totalTests}
+                value={statusData.totalTests}
                 icon={<ListChecks className='h-5 w-5 text-blue-600' />}
                 bgColor="bg-blue-50"
             />
 
             <StatusCard
                 title="Passed"
-                value={passedTests}
+                value={statusData.passedTests}
                 icon={<CheckCircle2 className='h-5 w-5 text-green-600' />}
                 bgColor="bg-green-50"
             />
 
             <StatusCard
                 title="Failed"
-                value={failedTests}
+                value={statusData.failedTests}
                 icon={<XCircle className='h-5 w-5 text-red-600' />}
                 bgColor="bg-red-50"
             />
 
             <StatusCard
                 title="Pass Rate"
-                value={`${passRate}%`}
+                value={`${statusData.passRate}%`}
                 icon={<TrendingUp className='h-5 w-5 text-purple-600' />}
                 bgColor="bg-purple-50"
             />
