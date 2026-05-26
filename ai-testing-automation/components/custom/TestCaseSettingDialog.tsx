@@ -21,9 +21,10 @@ import { TestCasetype } from './UserReposLists'
 
 type props = {
   testCase: TestCasetype;
+  setReload: any;
 }
 
-function TestCaseSettingDialog({testCase}: props) {
+function TestCaseSettingDialog({testCase, setReload}: props) {
     const [formData, setFormData] = React.useState({
       title: testCase.title,
       description: testCase.description,
@@ -38,6 +39,22 @@ function TestCaseSettingDialog({testCase}: props) {
         ...prev,
         [field]: value,
       }));
+    }
+
+    const updateCase = async ()=>{
+      const response = await fetch("/api/test-cases/settings",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...formData,
+            repoId: testCase.repoId,
+            testCaseId: testCase.id
+          })  
+        });
+        setReload();
     }
   
     return (
@@ -126,12 +143,16 @@ function TestCaseSettingDialog({testCase}: props) {
 
           </div>
           <DialogFooter>
-            <DialogClose>
-                <Button>Cancel</Button>
-                <Button className="ml-2">Update Test-Case</Button>
+            <DialogClose asChild>
+              <Button>
+                Cancel
+              </Button>
             </DialogClose>
 
-        </DialogFooter>
+            <Button onClick={updateCase}>
+              Save
+            </Button>
+          </DialogFooter>
 
         </DialogContent>
         

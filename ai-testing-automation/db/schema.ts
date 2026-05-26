@@ -1,4 +1,5 @@
 import { pgTable, serial, text, timestamp, integer, varchar, jsonb } from "drizzle-orm/pg-core";
+import { Target } from "lucide-react";
 
 
 export const users = pgTable("users", {
@@ -21,7 +22,9 @@ export const repositories = pgTable("repositories",{
   updatedAt:timestamp("updated_at"),
   language:text("language"),
   owner:text("owner").notNull(),
-  defaultBranch:text("default_branch").notNull()
+  defaultBranch:text("default_branch").notNull(),
+  targetDomain:varchar("target_domain").default('http://localhost:3000/'),
+  globalInstruction:text("global_instruction"),
 })
 
 export const TestCasesTable = pgTable("test_cases", {

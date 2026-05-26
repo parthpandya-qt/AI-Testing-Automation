@@ -57,7 +57,7 @@ return (
             <div className = " flex gap-5">
               <Badge variant="secondary">{testCase.type}</Badge>
               <Badge variant="secondary">pending</Badge>
-              <TestCaseSettingDialog testCase={testCase} />
+              <TestCaseSettingDialog testCase={testCase} setReload={onReload} />
             </div>
           </div>
         ))}

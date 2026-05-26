@@ -14,7 +14,7 @@ import UserReposLists from "./UserReposLists";
 
 
 
-type UserRepo = {
+export type UserRepo = {
   id: number;
   name: string;
   fullName: string;
@@ -26,6 +26,10 @@ type UserRepo = {
   owner: string;
   private_: boolean;
   repoId: number;
+  userId: number;
+  targetDomain?: string;
+  globalInstruction?: string;
+ 
 };
 
 
