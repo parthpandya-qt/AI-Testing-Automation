@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm/sql/expressions/conditions";
 import { repositories } from "@/db/schema";
 export async function POST(req:NextRequest) {
     const body = await req.json();
-    const { userId, repoId, targetDomain, globalInstruction } = body;
+    const { repoId, targetDomain, globalInstruction } = body;
 
     const result = await db?.update(repositories).set({
         targetDomain,

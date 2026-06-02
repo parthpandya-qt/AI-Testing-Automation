@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
 import Image from "next/image";
 import {
   Accordion,
@@ -44,6 +44,7 @@ type UserRepo = {
 type Props = {
   repoList: UserRepo[];
   setUserRepos: React.Dispatch<React.SetStateAction<UserRepo[]>>;
+  setReload: Dispatch<SetStateAction<boolean>>;
 };
 
 export type TestCasetype = {
@@ -69,7 +70,7 @@ type statusType = {
   passRate: number;
 };
 
-function UserReposLists({ repoList, setUserRepos }: Props) {
+function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
   const user = React.useContext(UserDetailContext);
 
   const [loadingRepoId, setLoadingRepoId] = React.useState<number | null>(null);
@@ -231,7 +232,7 @@ function UserReposLists({ repoList, setUserRepos }: Props) {
                     
                   </div>
                   <div className="mr-5">
-                    <RepoSettings repo={repo}/>
+                    <RepoSettings repo={repo} setReload={setReload} />
                   </div>
                   
 

@@ -173,7 +173,7 @@ function WorkspaceBody() {
       </Card>
       <Card>
         <CardContent>
-            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} />}
+            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} setReload={setRefreshPage} />}
         </CardContent>
         
       </Card>

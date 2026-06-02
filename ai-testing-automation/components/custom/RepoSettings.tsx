@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Dispatch, SetStateAction } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,14 @@ import { UserRepo } from './WorkspaceBody';
 
 type props ={
     repo: UserRepo;
+    setReload: Dispatch<SetStateAction<boolean>>;
 }
 
 
-function RepoSettings({ repo }:props) {
+function RepoSettings({ repo, setReload }:props) {
 
 
-
+    const [isOpen, setIsOpen] = React.useState(false);
     const [reposettings, setRepoSettings] = React.useState({
         targetDomain: repo.targetDomain || "",
         globalInstruction: repo.globalInstruction || ""
@@ -38,17 +39,18 @@ function RepoSettings({ repo }:props) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                userId: repo.userId,
                 repoId: repo.repoId,
                 targetDomain: reposettings.targetDomain,
                 globalInstruction: reposettings.globalInstruction
             })
         });
-        
+        console.log("Settings saved:", await result.json());
+        setIsOpen(false);
+        setReload(prev => !prev);
     }
   return (
     <div>
-<Dialog>
+<Dialog open={isOpen} onOpenChange={setIsOpen}>
   <DialogTrigger asChild>
     <Button>
         <Settings2 className="h-4 w-4 mr-1" />
