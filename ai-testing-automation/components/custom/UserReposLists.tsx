@@ -60,6 +60,7 @@ export type TestCasetype = {
   branch: string;
   targetRoute: string;
   expectedResult: string;
+  status: string;
   
 };
 
@@ -142,13 +143,32 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
           passRate: 0,
         },
       }));
+      const userTestCases = result.data as TestCasetype[];
+
+      const passedTests = userTestCases.filter(
+        (test) => test.status === "passed"
+      ).length;
+      const failedTests = userTestCases.filter(
+        (test) => test.status === "failed"
+      ).length;
+      const passRate = tests.length > 0 ? (passedTests / tests.length) * 100 : 0;
+
+      setRepoStatus((prev) => ({
+        ...prev,
+        [repoId]: {
+          totalTests: tests.length,
+          passedTests,
+          failedTests,
+          passRate,
+        },
+      }));
     } catch (error) {
       console.log(error);
     } finally {
       setTestCaseLoading(false);
     }
   };
-
+   
   return (
     <div>
       <h2 className="text-2xl font-medium mb-4">

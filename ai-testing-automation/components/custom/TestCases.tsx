@@ -54,9 +54,17 @@ return (
               </div>
               
             </div>
-            <div className = " flex gap-5">
+            <div className = " flex gap-5 items-center">
               <Badge variant="secondary">{testCase.type}</Badge>
-              <Badge variant="secondary">pending</Badge>
+              {testCase?.status=='failed' && <Badge variant="destructive" className="font-normal text-red-100">
+                {testCase.status}
+              </Badge>}
+              {testCase?.status=='passed' && <Badge variant="default" className="font-normal text-green-100 bg-green-500">
+                {testCase.status}
+              </Badge>}
+              {testCase?.status=='running' && <Badge variant="destructive" className="font-normal text-yellow-100 bg-yellow-500">
+                {testCase.status}
+              </Badge>}
               <TestCaseSettingDialog testCase={testCase} setReload={onReload} />
             </div>
           </div>

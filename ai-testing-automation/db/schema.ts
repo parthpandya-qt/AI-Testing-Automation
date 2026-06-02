@@ -57,6 +57,11 @@ export const TestCasesTable = pgTable("test_cases", {
 
     status: varchar("status", { length: 100 })
         .default("generated"),
+    logs: jsonb("logs").$type<string[]>().default([]),
+
+    sessionId: varchar("session_id", { length: 255 }),
+
+    sessionUrl: text("session_url"),
 
     createdAt: timestamp("created_at")
         .defaultNow(),
