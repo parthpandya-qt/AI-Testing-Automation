@@ -37,7 +37,7 @@ type Repo = {
   private_: boolean;
 };
 
-function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => void}) {
+function RepoDialog({setRefreshPage}: {setRefreshPage: any}) {
   const [repoList, setRepoList] = useState<Repo[]>([]);
   const [repoSearch, setRepoSearch] = useState<string>("");
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
@@ -91,7 +91,7 @@ function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => voi
 
       //console.log(result.data);
       setIsOpen(false);
-      setRefreshPage(true);
+      setRefreshPage((prev: any) => !prev);
     } catch (error) {
       console.log(error);
     }
@@ -172,6 +172,7 @@ function RepoDialog({setRefreshPage}: {setRefreshPage: (refresh: boolean) => voi
             </DialogClose>
 
             <Button
+              disabled={!selectedRepo || !userDetails?.id}
               onClick={(e) => {
                 const button = e.currentTarget;
 

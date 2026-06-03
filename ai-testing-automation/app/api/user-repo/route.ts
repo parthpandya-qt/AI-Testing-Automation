@@ -7,6 +7,10 @@ import {eq} from "drizzle-orm";
 export async function POST(req: NextRequest) {
     const { repoId, userId, name, full_name, description, html_url, updated_at, language, default_branch, owner, private_ } = await req.json();
 
+    if (!userId) {
+        return NextResponse.json({ error: "User ID is missing or unauthorized" }, { status: 400 });
+    }
+
     try{
         const result = await db.insert(repositories).values({
             repoId,

@@ -102,6 +102,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
   const handleGenerateTestCases = async (repo: UserRepo) => {
     try {
       setLoadingRepoId(repo.repoId);
+      setTestCaseLoading(true);
 
       await axios.post("/api/generate-test-cases", {
         userId: user?.userDetails.id,
@@ -114,6 +115,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
       await addTestCases(repo.repoId);
     } catch (error) {
       console.log(error);
+      setTestCaseLoading(false);
     } finally {
       setLoadingRepoId(null);
     }
@@ -328,6 +330,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                           repo
                         )
                       }
+                      repository={repo}
                     />
                   )}
 

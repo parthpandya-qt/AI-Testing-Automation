@@ -252,17 +252,17 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
               {isExecuting ? (
                 <Button
                   onClick={stopExecution}
-                  className="h-10 bg-primary hover:bg-primary/95 text-white shadow-md font-medium px-6 gap-2"
-                >
-                  <Play className="h-4 w-4 fill-white" /> Start Execution
-                </Button>
-              ) : (
-                <Button
-                  onClick={stopExecution}
                   variant="destructive"
                   className="h-10 px-6 font-medium gap-2"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" /> Stop Runner
+                </Button>
+              ) : (
+                <Button
+                  onClick={startExecution}
+                  className="h-10 bg-primary hover:bg-primary/95 text-white shadow-md font-medium px-6 gap-2"
+                >
+                  <Play className="h-4 w-4 fill-white" /> Start Execution
                 </Button>
               )}
             </div>

@@ -5,14 +5,17 @@ import { TestCasetype } from "./UserReposLists";
 import { Button } from "../ui/button";
 import { Play, RefreshCw } from "lucide-react";
 import TestCaseSettingDialog from "./TestCaseSettingDialog";
+import TestExecutionModal from "./TestExecutionModal";
 
 type Props = {
    testCaseList: TestCasetype[];
    onReload: () => void;
+   repository: any;
 };
 
-function TestCases({ testCaseList, onReload }: Props) {
+function TestCases({ testCaseList, onReload, repository }: Props) {
   const[selectedTestCases, setSelectedTestCases] = React.useState<number[]>([]);
+  const[isModalOpen, setIsModalOpen] = React.useState(false);
 
   const handleSelectedTestCase = (checked: boolean | "indeterminate", id:number) => {
     if(checked){
@@ -27,7 +30,7 @@ return (
       
       <div className = "flex items-center justify-between mt-5">
         <h2 className=" text-2xl font-large ml-5">Generated Test Cases</h2>
-        <Button variant="outline" size="sm" className="ml-5 mt-3 mr-5 bg-black text-white" onClick={()=>{onReload}}>
+        <Button variant="outline" size="sm" className="ml-5 mt-3 mr-5 bg-black text-white" onClick={onReload}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -73,10 +76,24 @@ return (
       </div>
       <div className="flex items-center justify-between mt-4 bg-gray-50 p-4 rounded-xl">
           <h2 className="font-bold ml-5" >Run Selected Test Case</h2>
-          <Button disabled={selectedTestCases.length === 0} className="mr-5">
+          <Button 
+            disabled={selectedTestCases.length === 0} 
+            className="mr-5 cursor-pointer"
+            onClick={() => setIsModalOpen(true)}
+          >
             <Play className="h-4 w-4" /> Run Selected{selectedTestCases.length > 0 && ` (${selectedTestCases.length})`}
           </Button>
         </div>
+
+        <TestExecutionModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            onReload();
+          }}
+          testCases={testCaseList.filter((tc) => selectedTestCases.includes(tc.id))}
+          repository={repository}
+        />
     </div>
   );
 }

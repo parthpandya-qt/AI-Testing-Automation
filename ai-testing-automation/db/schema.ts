@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, varchar, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, varchar, jsonb, bigint } from "drizzle-orm/pg-core";
 import { Target } from "lucide-react";
 
 
@@ -13,7 +13,7 @@ export const users = pgTable("users", {
 export const repositories = pgTable("repositories",{
   id:serial("id").primaryKey(),
   userId:integer("user_id").references(()=>users.id).notNull(),
-  repoId:integer("repo_id").notNull(),
+  repoId:bigint("repo_id", { mode: "number" }).notNull(),
   name:text("name").notNull(),
   fullName:text("full_name").notNull(),
   private:integer("private").notNull(),
