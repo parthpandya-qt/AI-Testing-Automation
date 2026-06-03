@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   credits: integer("credits").default(1000).notNull(),
+  plan: varchar("plan", { length: 50 }).default("free").notNull(),
 });
 
 export const repositories = pgTable("repositories",{

@@ -153,7 +153,8 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
       const failedTests = userTestCases.filter(
         (test) => test.status === "failed"
       ).length;
-      const passRate = tests.length > 0 ? (passedTests / tests.length) * 100 : 0;
+      const passRate = tests.length > 0 ? Number(((passedTests / tests.length) * 100).toFixed(2)) : 0.00;
+      console.log("Pass Rate:", passRate);
 
       setRepoStatus((prev) => ({
         ...prev,
