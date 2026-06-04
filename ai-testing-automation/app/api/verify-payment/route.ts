@@ -52,6 +52,8 @@ await db
   .update(users)
   .set({
     plan: "pro",
+    subscriptionStart: new Date(),
+    subscriptionEnd: new Date(new Date().setMonth(new Date().getMonth() + 1)) 
   })
   .where(
     eq(

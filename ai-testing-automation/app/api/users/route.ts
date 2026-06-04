@@ -11,7 +11,7 @@ import { currentUser} from "@clerk/nextjs/server";
 export async function POST(req:NextRequest){
     const user = await currentUser();
     
-    // Automatic fallback: If Clerk session is null/desynced, use first DB user or create one
+    
     if (!user) {
         console.log("[WARN] Clerk currentUser() returned null. Falling back to database user for testing.");
         try {

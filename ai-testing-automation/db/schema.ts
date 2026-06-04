@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   credits: integer("credits").default(1000).notNull(),
   plan: varchar("plan", { length: 50 }).default("free").notNull(),
+  subscriptionStart: timestamp("subscription_start"),
+  subscriptionEnd: timestamp("subscription_end")
 });
 
 export const repositories = pgTable("repositories",{

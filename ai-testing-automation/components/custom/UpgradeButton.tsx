@@ -6,76 +6,149 @@ declare global {
   }
 }
 
-export default function UpgradeButton() {
+type UpgradeButtonProps = {
+  planStored: string | null;
+  disable: boolean;
+};
+
+export default function UpgradeButton({
+  planStored,
+  disable,
+}: UpgradeButtonProps) {
   const handlePayment = async () => {
-    const script = document.createElement("script");
+    try {
+      const script = document.createElement("script");
 
-    script.src =
-      "https://checkout.razorpay.com/v1/checkout.js";
+      script.src =
+        "https://checkout.razorpay.com/v1/checkout.js";
 
-    script.onload = async () => {
-      const res = await fetch(
-        "/api/create-order",
-        {
-          method: "POST",
-        }
-      );
-
-      const order = await res.json();
-
-      const options = {
-        key:
-          process.env
-            .NEXT_PUBLIC_RAZORPAY_KEY_ID,
-
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.id,
-
-        name: "AI Testing Automation",
-        description: "Pro Plan",
-
-        handler: async function (
-          response: any
-        ) {
-          const verify = await fetch(
-            "/api/verify-payment",
+      script.onload = async () => {
+        try {
+          const res = await fetch(
+            "/api/create-order",
             {
               method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify(response),
             }
           );
 
-          const result =
-            await verify.json();
-
-          if (result.success) {
-            alert("Payment Successful");
-          } else {
-            alert("Verification Failed");
+          if (!res.ok) {
+            throw new Error(
+              "Failed to create order"
+            );
           }
-        },
+
+          const order = await res.json();
+
+          const options = {
+            key:
+              process.env
+                .NEXT_PUBLIC_RAZORPAY_KEY_ID,
+
+            amount: order.amount,
+            currency: order.currency,
+            order_id: order.id,
+
+            name: "AI Testing Automation",
+            description: "Pro Plan",
+
+            handler: async (
+              response: any
+            ) => {
+              try {
+                const verify =
+                  await fetch(
+                    "/api/verify-payment",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type":
+                          "application/json",
+                      },
+                      body: JSON.stringify(
+                        response
+                      ),
+                    }
+                  );
+
+                const result =
+                  await verify.json();
+
+                if (
+                  result.success
+                ) {
+                  alert(
+                    "Payment Successful!"
+                  );
+
+                  window.location.reload();
+                } else {
+                  alert(
+                    "Payment Verification Failed"
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  error
+                );
+                alert(
+                  "Something went wrong during verification"
+                );
+              }
+            },
+
+            theme: {
+              color: "#0f172a",
+            },
+          };
+
+          const payment =
+            new window.Razorpay(
+              options
+            );
+
+          payment.open();
+        } catch (error) {
+          console.error(error);
+
+          alert(
+            "Unable to create payment order"
+          );
+        }
       };
 
-      const payment =
-        new window.Razorpay(options);
+      script.onerror = () => {
+        alert(
+          "Failed to load Razorpay SDK"
+        );
+      };
 
-      payment.open();
-    };
-
-    document.body.appendChild(script);
+      document.body.appendChild(
+        script
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
     <button
+      disabled={
+        disable ||
+        planStored === "pro"
+      }
       onClick={handlePayment}
-      className="rounded-lg bg-black px-4 py-2 text-white"
+      className={
+        disable ||
+        planStored === "pro"
+          ? "w-full rounded-lg bg-gray-500 py-2.5 text-sm font-semibold text-white cursor-not-allowed"
+          : "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+      }
     >
-      Upgrade Now
+      {disable
+        ? "Checking Subscription..."
+        : planStored === "pro"
+        ? "Current Plan"
+        : "Upgrade to Pro"}
     </button>
   );
 }

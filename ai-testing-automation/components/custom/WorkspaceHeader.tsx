@@ -39,7 +39,8 @@ function WorkspaceHeader() {
 
         {/* Navigation */}
         <nav>
-          <ul className="flex items-center gap-8 text-sm font-medium">
+          <div className="hidden md:block">
+          <ul className="flex items-center gap-20 text-sm font-medium">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <Link
@@ -55,6 +56,7 @@ function WorkspaceHeader() {
               </li>
             ))}
           </ul>
+          </div>
         </nav>
 
         {/* User */}
