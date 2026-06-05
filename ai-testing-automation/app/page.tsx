@@ -1,16 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useState } from 'react';
-import {UserDetailContext} from '@/context/userDetailContext';
-
+import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-
-
-
-
-
+import { Github, Twitter, Linkedin, Mail, Heart, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
 
 const features = [
   {
@@ -56,28 +51,26 @@ export default function Home() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
-
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
-  const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll);
 
-  window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
-  
+  useEffect(() => {
+    if (!isLoaded) return;
 
-  return () => {
-    window.removeEventListener('scroll', onScroll);
-  };
-});
-useEffect(() => {
-  if (!isLoaded) return;
+    if (isSignedIn) {
+      router.push('/workspace');
+    }
+  }, [isSignedIn, isLoaded, router]);
 
-  if (isSignedIn) {
-    router.push('/workspace');
-  }
-}, [isSignedIn, isLoaded, router]);
-
-return (
+  return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -433,22 +426,105 @@ return (
           margin-right: auto;
         }
 
-        /* ── Footer ── */
-        .footer {
-          padding: 2rem;
-          text-align: center;
-          color: #334155;
-          font-size: 0.85rem;
-          border-top: 1px solid rgba(255,255,255,0.05);
+        /* ── Embedded Dark Mode Footer Styling ── */
+        .custom-footer {
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          background-color: #020617;
+          color: #94a3b8;
+          padding: 2rem 2rem 1.5rem;
+          margin-top: 4rem;
+        }
+        .footer-container {
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .footer-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 2rem;
+          padding-bottom: 2rem;
+        }
+        .footer-brand-title {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 1rem;
+          font-weight: 800;
+          color: #f1f5f9;
+          margin-bottom: 0.5rem;
+        }
+        .footer-brand-desc {
+          font-size: 0.75rem;
+          color: #64748b;
+          line-height: 1.6;
+          max-width: 260px;
+        }
+        .footer-col-title {
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #4f46e5;
+          margin-bottom: 0.75rem;
+        }
+        .footer-links {
+          list-style: none;
+        }
+        .footer-links li {
+          margin-bottom: 0.5rem;
+        }
+        .footer-links a {
+          font-size: 0.75rem;
+          color: #94a3b8;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .footer-links a:hover {
+          color: #818cf8;
+        }
+        .footer-bottom {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          padding-top: 1.5rem;
+        }
+        .footer-meta {
+          font-size: 0.7rem;
+          color: #64748b;
+        }
+        .footer-dev-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          color: #94a3b8;
+          text-decoration: none;
+          font-weight: 500;
+          transition: color 0.2s;
+        }
+        .footer-dev-link:hover {
+          color: #6366f1;
+        }
+        .footer-socials {
+          display: flex;
+          gap: 1rem;
+          color: #64748b;
+        }
+        .footer-socials a {
+          color: inherit;
+          transition: color 0.2s;
+        }
+        .footer-socials a:hover {
+          color: #f1f5f9;
         }
 
-        /* ── Animations ── */
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @media (min-width: 640px) {
+          .footer-bottom {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+          }
         }
-
-        /* ── Responsive ── */
         @media (max-width: 640px) {
           .nav { padding: 1rem; }
           .cta-card { padding: 2.5rem 1.5rem; }
@@ -458,7 +534,16 @@ return (
 
       {/* Navbar */}
       <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
-        <Link href="/" className="nav-logo">⚗️ TestAI</Link>
+        
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo.svg"
+            alt="Automate-Testing.io"
+            width={35}
+            height={35}
+          />
+  <span>Automate-Testing.io</span>
+</Link>
         <div className="nav-links">
           <Link href="/sign-in" className="btn-ghost">Log In</Link>
           <Link href="/sign-up" className="btn-primary">Sign Up Free</Link>
@@ -529,7 +614,7 @@ return (
             <span className="gradient-text">entire test suite?</span>
           </h2>
           <p className="cta-sub">
-            Join hundreds of teams already shipping faster with TestAI.
+            Join hundreds of teams already shipping faster with Automate-Testing.io.
             No credit card required — start free today.
           </p>
           <div className="hero-cta">
@@ -543,9 +628,90 @@ return (
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer">
-        © {new Date().getFullYear()} TestAI — AI Testing Automation. All rights reserved.
+      {/* ── Custom Low-Height Non-Interactive Footer ── */}
+      <footer className="custom-footer">
+        <div className="footer-container">
+          
+          <div className="footer-grid">
+            {/* Brand */}
+            <div>
+              <div className="footer-brand-title">
+                <span style={{ fontSize: '1.1rem' }}>
+                  <Image src="/logo.svg" alt="Automate-Testing.io" width={20} height={20} />
+                </span> Automate-Testing.io
+              </div>
+              <p className="footer-brand-desc">
+                Automate your dynamic execution matrices and orchestrate system-wide analytical tracking pipelines flawlessly.
+              </p>
+            </div>
+
+            {/* Product Links */}
+            <div>
+              <h4 className="footer-col-title">Product</h4>
+              <ul className="footer-links">
+                <li><a href="#">Analytics Framework</a></li>
+                <li><a href="#">Automations</a></li>
+                <li><a href="#">Enterprise Pricing</a></li>
+              </ul>
+            </div>
+
+            {/* Resources Links */}
+            <div>
+              <h4 className="footer-col-title">Resources</h4>
+              <ul className="footer-links">
+                <li><a href="#">Documentation</a></li>
+                <li><a href="#">System Status</a></li>
+                <li><a href="#">API References</a></li>
+              </ul>
+            </div>
+
+            {/* Support / Contact */}
+            <div>
+              <h4 className="footer-col-title">Connect</h4>
+              <p style={{ fontSize: '0.75rem', lineHeight: '1.6' }}>
+                Have questions or need technical support? Drop a message to our core engineering channels.
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="footer-bottom">
+            <div className="footer-meta">
+              <p style={{ marginBottom: '0.25rem' }}>&copy; {currentYear} Automate-Testing.io, Inc. All rights reserved.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+                <span>Engineered with</span>
+                <Heart size={11} style={{ color: '#ef4444', fill: '#ef4444' }} />
+                <span>for developers.</span>
+                <span style={{ color: '#334155' }}>•</span>
+                <a 
+                  href="https://parthpandya-qt.github.io/portfoliowebsite/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="footer-dev-link"
+                >
+                  About Developer <ExternalLink size={10} />
+                </a>
+              </div>
+            </div>
+
+            {/* Social Icons */}
+            <div className="footer-socials">
+              <a href="https://github.com/parthpandya-qt" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <Github size={16} />
+              </a>
+              <a href="https://x.com/_Parth_Pandya" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                <Twitter size={16} />
+              </a>
+              <a href="https://linkedin.com/in/parth1307" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                <Linkedin size={16} />
+              </a>
+              <a href="mailto:ppandya573@gmail.com" aria-label="Email support">
+                <Mail size={16} />
+              </a>
+            </div>
+          </div>
+
+        </div>
       </footer>
     </>
   );

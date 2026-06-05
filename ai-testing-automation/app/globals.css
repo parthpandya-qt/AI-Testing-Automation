@@ -119,6 +119,16 @@
   --ring: hsl(222 47% 11%);
 }
 
+html::-webkit-scrollbar {
+  display: none;
+}
+
+
+html {
+  -ms-overflow-style: none;  
+  scrollbar-width: none;  
+}
+
 @layer base {
   * {
     @apply border-border;

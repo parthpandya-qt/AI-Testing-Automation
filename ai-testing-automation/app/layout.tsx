@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import Provider from "./provider";
+import Footer from "@/components/custom/Footer";
 
 export const metadata: Metadata = {
   title: "TestAI — AI-Powered Testing Automation",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <body style={{ margin: 0, padding: 0 }}>
           <Provider>{children}</Provider>
         </body>
+        
       </html>
     </ClerkProvider>
     

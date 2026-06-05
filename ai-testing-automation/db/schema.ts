@@ -1,5 +1,5 @@
 import { pgTable, serial, text, timestamp, integer, varchar, jsonb, bigint } from "drizzle-orm/pg-core";
-import { Target } from "lucide-react";
+
 
 
 export const users = pgTable("users", {
@@ -10,7 +10,11 @@ export const users = pgTable("users", {
   credits: integer("credits").default(1000).notNull(),
   plan: varchar("plan", { length: 50 }).default("free").notNull(),
   subscriptionStart: timestamp("subscription_start"),
-  subscriptionEnd: timestamp("subscription_end")
+  subscriptionEnd: timestamp("subscription_end"),
+  subscriberEmails: text("subscriber_emails")
+  .array()
+  .notNull()
+  .default([]),
 });
 
 export const repositories = pgTable("repositories",{

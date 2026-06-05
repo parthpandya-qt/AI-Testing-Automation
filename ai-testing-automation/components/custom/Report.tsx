@@ -194,7 +194,7 @@ export default function Report() {
               <p className="text-xs text-slate-400">Ratio tracking total test layers built vs connected code repositories.</p>
             </div>
             
-            <div className="h-56 w-full relative flex items-center justify-center my-2">
+            <div className="h-56 w-full relative flex items-center justify-center my-2 ">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
