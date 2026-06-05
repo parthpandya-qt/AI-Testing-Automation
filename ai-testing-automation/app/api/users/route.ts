@@ -13,7 +13,7 @@ export async function POST(req:NextRequest){
     
     
     if (!user) {
-        console.log("[WARN] Clerk currentUser() returned null. Falling back to database user for testing.");
+        
         try {
             let existingUsers = await db.select().from(users).limit(1);
             if (existingUsers.length === 0) {

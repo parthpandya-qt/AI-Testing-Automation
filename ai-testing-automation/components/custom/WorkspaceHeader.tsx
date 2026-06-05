@@ -12,13 +12,14 @@ function WorkspaceHeader() {
     { name: "Workspace", href: "/workspace" },
     { name: "Pricing", href: "/pricing" },
     { name: "Support", href: "/support" },
+    { name: "Report", href: "/report" },
   ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md shadow-sm">
       <div className="flex items-center justify-between px-8 py-4">
         {/* Logo */}
-        <Link href="/workspace" className="flex items-center gap-3">
+        <Link href="/workspace" className="flex items-center gap-2">
           <Image
             src="/logo.svg"
             alt="Workspace"
@@ -29,7 +30,7 @@ function WorkspaceHeader() {
 
           <div>
             <h1 className="text-xl font-bold text-gray-800">
-              Workspace
+              Automate-Testing
             </h1>
             <p className="text-xs text-gray-500">
               Smart collaboration

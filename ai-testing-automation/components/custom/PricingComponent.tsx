@@ -16,6 +16,7 @@ const plans = [
       "Less Storage",
       "Basic AI Analysis",
       "Community Support",
+      "2000 Credits/Month",
     ],
   },
   {
@@ -28,6 +29,7 @@ const plans = [
       "Advanced AI Analysis",
       "GitHub Integration",
       "Priority Support",
+      "10000 Credits/Month",
     ],
   },
   {
@@ -40,13 +42,14 @@ const plans = [
       "Dedicated Infrastructure",
       "SSO Authentication",
       "24/7 Premium Support",
+      "Unlimited Credits",
     ],
   },
 ];
 
 export default function PricingComponent() {
-  const { userDetail } = useContext(UserDetailContext);
-  const userId = userDetail?.id;
+  const { userDetails } = useContext(UserDetailContext);
+  const userId = userDetails?.id;
 
   const [planStored, setPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,12 +74,9 @@ export default function PricingComponent() {
 
         const data = await res.json();
 
-        setPlan(data.plan);
+        setPlan(data[0]?.plan);
 
-        console.log(
-          "Current Plan:",
-          data.plan
-        );
+        
       } catch (error) {
         console.error(
           "Error fetching user plan:",

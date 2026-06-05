@@ -71,5 +71,42 @@ export const TestCasesTable = pgTable("test_cases", {
 });
 
 
+
+
+export const supportTickets = pgTable(
+  "support_tickets",
+  {
+    id: serial("id").primaryKey(),
+
+    userId: integer("user_id")
+      .notNull(),
+
+    subject: text("subject")
+      .notNull(),
+
+    category: varchar("category", {
+      length: 100,
+    }).notNull(),
+
+    description: text("description")
+      .notNull(),
+
+    status: varchar("status", {
+      length: 50,
+    })
+      .default("open")
+      .notNull(),
+
+    createdAt: timestamp(
+      "created_at"
+    )
+      .defaultNow()
+      .notNull(),
+  }
+);
+
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Repository = typeof repositories.$inferSelect;
+export type NewRepository = typeof repositories.$inferInsert;

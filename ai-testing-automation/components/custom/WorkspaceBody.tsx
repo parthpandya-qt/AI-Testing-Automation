@@ -39,8 +39,9 @@ function WorkspaceBody() {
   const [token, setToken] = useState<string | null>(null);
   const [refreshPage, setRefreshPage] = useState(false);
   const [userRepos, setUserRepos] = useState<UserRepo[]>([]);
-  const context = useContext(UserDetailContext);
-  const userDetails = context?.userDetails;
+  
+  const { userDetails, credits } = useContext(UserDetailContext);
+  
   
   const router = useRouter();
 
@@ -52,8 +53,10 @@ function WorkspaceBody() {
   useEffect(() => {
   if (userDetails) {
     getUserRepoList();
+    
   }
 }, [userDetails, refreshPage]);
+
 
 
   const getGithubUserToken = async () => {
@@ -74,6 +77,8 @@ function WorkspaceBody() {
 };
 
 
+
+
   const onAddRepo = () => {
     router.push("/api/github");
   };
@@ -81,7 +86,7 @@ function WorkspaceBody() {
   const getUserRepoList = async ()=>{
       const result = await axios.get("./api/user-repo?userId=" + userDetails?.id)
       
-      console.log(result)
+      
       setUserRepos(result.data);
   }
 
@@ -103,7 +108,7 @@ function WorkspaceBody() {
             <p className="text-xs opacity-80">Remaining Credits</p>
 
             <h2 className="text-lg font-semibold">
-                {userDetails?.credits}
+                {credits}
             </h2>
         </div>
         </div>

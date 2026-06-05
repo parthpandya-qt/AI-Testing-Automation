@@ -7,6 +7,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import {db} from "@/db";
 import { TestCasesTable } from "@/db/schema";
 
+import {users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
 });
@@ -446,6 +449,38 @@ Each test case must include:
                     )
                 )
                 .returning();
+        const generatedCount =
+  insertedTestCases.length;
+
+const creditCost =
+  generatedCount * 10;
+
+const existingUser =
+  await db.query.users.findFirst({
+    where: eq(
+      users.id,
+      Number(userId)
+    ),
+  });
+let newCredits = 0;
+if (existingUser) {
+  newCredits = Math.max(
+    0,
+    existingUser.credits - creditCost
+  );
+
+  await db
+    .update(users)
+    .set({
+      credits: newCredits,
+    })
+    .where(
+      eq(
+        users.id,
+        Number(userId)
+      )
+    );
+}
 
         return NextResponse.json(
             {
@@ -459,6 +494,7 @@ Each test case must include:
 
                 testCases:
                     insertedTestCases,
+                credits: newCredits
             }
         );
     } catch (error: any) {
