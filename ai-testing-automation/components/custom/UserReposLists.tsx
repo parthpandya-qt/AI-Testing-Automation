@@ -192,25 +192,26 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
             className="border rounded-md mb-2"
           >
             <AccordionTrigger className="w-full">
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full min-w-0 pr-4">
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <Image
                     src="/github1.svg"
                     alt="GitHub"
                     width={20}
                     height={20}
+                    className="shrink-0"
                   />
 
-                  <div className="flex flex-col items-start">
-                    <span>{repo.name}</span>
+                  <div className="flex flex-col items-start min-w-0 text-left">
+                    <span className="font-semibold text-gray-800 break-all">{repo.name}</span>
 
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                       Branch:{" "}
                       {repo.defaultBranch || "Unknown"}
                     </p>
 
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       Updated:
                       {" "}
                       {new Date(
@@ -221,7 +222,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                 </div>
 
                 <div
-                  className="hover:bg-gray-200 p-1 rounded cursor-pointer"
+                  className="hover:bg-gray-200 p-1 rounded cursor-pointer shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteRepo(repo.repoId);
@@ -240,27 +241,22 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
             <AccordionContent>
               <div className="pt-4 space-y-5">
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between w-full">
 
-                  <div className="flex items-center gap-2">
-                    <Link2Icon className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-2 max-w-full overflow-hidden">
+                    <Link2Icon className="h-5 w-5 text-primary shrink-0" />
 
-                    <div className="bg-gray-100 rounded-md px-2 py-1 flex items-center gap-2">
-                      <span>Target Domain:</span>
+                    <div className="bg-gray-100 rounded-md px-2.5 py-1.5 flex items-center gap-2 overflow-hidden max-w-full">
+                      <span className="shrink-0 text-xs sm:text-sm text-gray-600">Target Domain:</span>
 
-                      <span className="bg-white border rounded-md px-2 py-1 text-primary font-medium">
-                        {repo.targetDomain}
+                      <span className="bg-white border rounded-md px-2 py-1 text-primary font-medium truncate text-xs sm:text-sm">
+                        {repo.targetDomain || "None configured"}
                       </span>
                     </div>
-                    
                   </div>
-                  <div className="mr-5">
+                  <div className="self-end sm:self-auto mr-0 sm:mr-5 shrink-0">
                     <RepoSettings repo={repo} setReload={setReload} />
                   </div>
-                  
-
-                  
-
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -94,7 +94,7 @@ function WorkspaceBody() {
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
       
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">
             Workspace
@@ -104,22 +104,22 @@ function WorkspaceBody() {
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl shadow-md">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-xl shadow-md self-start sm:self-auto min-w-[120px]">
             <p className="text-xs opacity-80">Remaining Credits</p>
 
             <h2 className="text-lg font-semibold">
                 {credits}
             </h2>
         </div>
-        </div>
+      </div>
 
       {/* GitHub Connect Card */}
       <Card className="p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
           
           {/* Left Section */}
-          <div className="flex items-center gap-4">
-            <div className="bg-gray-100 p-3 rounded-xl">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="bg-gray-100 p-3 rounded-xl shrink-0">
               <Image
                 src="/github1.svg"
                 alt="GitHub Logo"
@@ -139,40 +139,46 @@ function WorkspaceBody() {
           </div>
 
           {/* Button */}
-<div className="flex items-center gap-4">
-  {!token ? (
-    <button
-      onClick={onAddRepo}
-      className="
-        bg-black
-        text-white
-        px-5
-        py-2.5
-        rounded-xl
-        font-medium
-        transition-all
-        duration-200
-        hover:scale-105
-        active:scale-95
-        cursor-pointer
-      "
-    >
-      Setup
-    </button>
-  ) : (
-    <div
-      className="
-        transition-all
-        duration-200
-        hover:scale-105
-        active:scale-95
-        cursor-pointer
-      "
-    >
-      <RepoDialog setRefreshPage={setRefreshPage} />
-    </div>
-  )}
-</div>
+          <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
+            {!token ? (
+              <button
+                onClick={onAddRepo}
+                className="
+                  bg-black
+                  text-white
+                  px-5
+                  py-2.5
+                  rounded-xl
+                  font-medium
+                  transition-all
+                  duration-200
+                  hover:scale-105
+                  active:scale-95
+                  cursor-pointer
+                  w-full
+                  sm:w-auto
+                "
+              >
+                Setup
+              </button>
+            ) : (
+              <div
+                className="
+                  transition-all
+                  duration-200
+                  hover:scale-105
+                  active:scale-95
+                  cursor-pointer
+                  w-full
+                  sm:w-auto
+                  flex
+                  justify-end
+                "
+              >
+                <RepoDialog setRefreshPage={setRefreshPage} />
+              </div>
+            )}
+          </div>
           
         </div>
       </Card>

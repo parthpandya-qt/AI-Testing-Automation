@@ -72,6 +72,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
   const [executionMode, setExecutionMode] = useState<"cache" | "generate">("cache");
   const [customPrompt, setCustomPrompt] = useState("");
   const [showOptions, setShowOptions] = useState(false);
+  const [activeTab, setActiveTab] = useState<"queue" | "details">("queue");
 
   // Initialize states when testCases change or modal opens
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0 bg-white rounded-2xl shadow-2xl border overflow-hidden select-none">
+      <DialogContent className="max-w-5xl w-[calc(100%-2rem)] sm:w-full h-[95vh] sm:h-[90vh] flex flex-col p-0 gap-0 bg-white rounded-2xl shadow-2xl border overflow-hidden select-none">
         <DialogHeader className="border-b pb-4 flex flex-row items-center justify-between shrink-0">
           <div className="flex flex-col gap-1">
             <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -237,15 +238,15 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
               />
             </div>
 
-            <div className="flex gap-2.5">
+            <div className="flex gap-2.5 w-full sm:w-auto">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowOptions(!showOptions)}
-                className={`h-10 px-4 font-medium text-xs gap-1.5 transition-colors border-gray-300 ${showOptions ? "bg-primary/5 text-primary border-primary/30" : ""}`}
+                className={`h-10 flex-1 sm:flex-initial px-3 sm:px-4 font-medium text-xs gap-1.5 transition-colors border-gray-300 ${showOptions ? "bg-primary/5 text-primary border-primary/30" : ""}`}
               >
                 <SlidersHorizontal className="h-4 w-4" />
-                Execution Options
+                <span className="hidden xs:inline">Execution </span>Options
                 {showOptions ? <ChevronUp className="h-3 w-3 ml-0.5" /> : <ChevronDown className="h-3 w-3 ml-0.5" />}
               </Button>
 
@@ -253,16 +254,16 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                 <Button
                   onClick={stopExecution}
                   variant="destructive"
-                  className="h-10 px-6 font-medium gap-2"
+                  className="h-10 flex-1 sm:flex-initial px-6 font-medium gap-2 justify-center"
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" /> Stop Runner
+                  <Loader2 className="h-4 w-4 animate-spin" /> Stop
                 </Button>
               ) : (
                 <Button
                   onClick={startExecution}
-                  className="h-10 bg-primary hover:bg-primary/95 text-white shadow-md font-medium px-6 gap-2"
+                  className="h-10 flex-1 sm:flex-initial bg-primary hover:bg-primary/95 text-white shadow-md font-medium px-6 gap-2 justify-center"
                 >
-                  <Play className="h-4 w-4 fill-white" /> Start Execution
+                  <Play className="h-4 w-4 fill-white" /> Start
                 </Button>
               )}
             </div>
@@ -320,10 +321,28 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           )}
         </div>
 
+        {/* Mobile Navigation Tabs */}
+        <div className="flex md:hidden border-b bg-gray-50 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab("queue")}
+            className={`flex-1 py-3 text-center text-sm font-semibold transition-all border-b-2 ${activeTab === "queue" ? "border-primary text-primary bg-white font-bold" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+          >
+            Queue ({testCases.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("details")}
+            className={`flex-1 py-3 text-center text-sm font-semibold transition-all border-b-2 ${activeTab === "details" ? "border-primary text-primary bg-white font-bold" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+          >
+            Console & Code
+          </button>
+        </div>
+
         {/* Main Dashboard Panel */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-5 overflow-hidden">
           {/* Left: Test Cases Queue List */}
-          <div className="md:col-span-1 border-r rounded-xl overflow-y-auto bg-gray-50/50 p-3 flex flex-col gap-2 shadow-xs">
+          <div className={`md:col-span-1 border-r rounded-xl overflow-y-auto bg-gray-50/50 p-3 flex-col gap-2 shadow-xs ${activeTab === "queue" ? "flex" : "hidden md:flex"}`}>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">
               Execution Queue
             </h3>
@@ -335,7 +354,13 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
               return (
                 <div
                   key={tc.id}
-                  onClick={() => setSelectedDetailId(tc.id)}
+                  onClick={() => {
+                    setSelectedDetailId(tc.id);
+                    // On mobile, auto-switch tab to details when a test case in the queue is clicked
+                    if (window.innerWidth < 768) {
+                      setActiveTab("details");
+                    }
+                  }}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
                     isActive
                       ? "bg-white border-primary shadow-sm ring-1 ring-primary/20"
@@ -363,7 +388,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           </div>
 
           {/* Right: Code, Live Logs & Details Panel */}
-          <div className="md:col-span-2 border rounded-xl flex flex-col bg-white overflow-hidden shadow-sm">
+          <div className={`md:col-span-2 border rounded-xl flex-col bg-white overflow-hidden shadow-sm ${activeTab === "details" ? "flex" : "hidden md:flex"}`}>
             {currentSelectedTestCase ? (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header Info */}

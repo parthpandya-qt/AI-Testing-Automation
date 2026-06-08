@@ -74,7 +74,7 @@ function RepoSettings({ repo, setReload }:props) {
             <input 
                 type="text"
                 placeholder="App URL/Domain for testing"
-                className="border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-grey-200"
+                className="w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-grey-200"
                 value={reposettings?.targetDomain}
                 onChange={(e) => setRepoSettings({...reposettings, targetDomain: e.target.value})}
             />
@@ -86,7 +86,7 @@ function RepoSettings({ repo, setReload }:props) {
             <label className="block text-sm font-medium mb-1">Global Test Instruction</label>
             <Textarea 
                 placeholder="Instructions"
-                className="border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-grey-200"
+                className="w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-grey-200"
                 value={reposettings?.globalInstruction}
                 onChange={(e) => setRepoSettings({...reposettings, globalInstruction: e.target.value})}
             />

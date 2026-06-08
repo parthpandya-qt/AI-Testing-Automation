@@ -85,7 +85,7 @@ export default function SupportChat() {
 
       {/* Chat Window */}
       {open && (
-        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white border rounded-xl shadow-xl flex flex-col z-50">
+        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:right-6 w-[calc(100vw-2rem)] sm:w-96 h-[500px] max-h-[calc(100vh-120px)] bg-white border rounded-xl shadow-xl flex flex-col z-50">
           {/* Header */}
           <div className="p-4 border-b font-semibold text-slate-900">
             AI Support

@@ -28,9 +28,9 @@ function TestCases({ testCaseList, onReload, repository }: Props) {
 return (
     <div>
       
-      <div className = "flex items-center justify-between mt-5">
-        <h2 className=" text-2xl font-large ml-5">Generated Test Cases</h2>
-        <Button variant="outline" size="sm" className="ml-5 mt-3 mr-5 bg-black text-white" onClick={onReload}>
+      <div className = "flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mt-5 px-5">
+        <h2 className="text-2xl font-semibold">Generated Test Cases</h2>
+        <Button variant="outline" size="sm" className="bg-black text-white w-full sm:w-auto mt-2 sm:mt-0" onClick={onReload}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -40,25 +40,29 @@ return (
         {testCaseList.map((testCase) => (
           <div
             key={testCase.id}
-            className="flex items-center justify-between rounded-xl p-4 mt-4 bg-gray-50 gap-3  border-2-gray-200 "
+            className="flex flex-col sm:flex-row justify-between rounded-xl p-4 mt-4 bg-gray-50 gap-4 border border-gray-200"
           >
             
 
-            <div className = "flex gap-3 items-center">
-              <Checkbox checked={selectedTestCases.includes(testCase.id)} onCheckedChange={(checked)=>{handleSelectedTestCase(checked, testCase.id)}} />
-              <div>
-                <h2 className="font-medium text-medium">
+            <div className = "flex gap-3 items-start min-w-0">
+              <Checkbox 
+                checked={selectedTestCases.includes(testCase.id)} 
+                onCheckedChange={(checked)=>{handleSelectedTestCase(checked, testCase.id)}} 
+                className="mt-1 shrink-0"
+              />
+              <div className="min-w-0">
+                <h2 className="font-medium text-base text-gray-800 break-words">
                   {testCase.title}
                 </h2>
 
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-1 break-words">
                   {testCase.description}
                 </p>
               </div>
               
             </div>
-            <div className = " flex gap-5 items-center">
-              <Badge variant="secondary">{testCase.type}</Badge>
+            <div className="flex items-center flex-wrap gap-2.5 sm:gap-4 self-end sm:self-auto shrink-0">
+              <Badge variant="secondary" className="capitalize">{testCase.type}</Badge>
               {testCase?.status=='failed' && <Badge variant="destructive" className="font-normal text-red-100">
                 {testCase.status}
               </Badge>}
@@ -74,14 +78,14 @@ return (
         ))}
         
       </div>
-      <div className="flex items-center justify-between mt-4 bg-gray-50 p-4 rounded-xl">
-          <h2 className="font-bold ml-5" >Run Selected Test Case</h2>
+      <div className="flex flex-col sm:flex-row items-center justify-between mt-4 bg-gray-50 p-4 rounded-xl gap-4">
+          <h2 className="font-bold text-gray-800" >Run Selected Test Cases</h2>
           <Button 
             disabled={selectedTestCases.length === 0} 
-            className="mr-5 cursor-pointer"
+            className="w-full sm:w-auto cursor-pointer"
             onClick={() => setIsModalOpen(true)}
           >
-            <Play className="h-4 w-4" /> Run Selected{selectedTestCases.length > 0 && ` (${selectedTestCases.length})`}
+            <Play className="h-4 w-4 mr-2" /> Run Selected{selectedTestCases.length > 0 && ` (${selectedTestCases.length})`}
           </Button>
         </div>
 
