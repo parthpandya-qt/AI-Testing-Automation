@@ -100,17 +100,26 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
   };
 
   const handleGenerateTestCases = async (repo: UserRepo) => {
+    if (user?.credits <= 0) {
+      alert("Insufficient credits. Please purchase more credits to generate test cases.");
+      return;
+    }
+
     try {
       setLoadingRepoId(repo.repoId);
       setTestCaseLoading(true);
 
-      await axios.post("/api/generate-test-cases", {
-        userId: user?.userDetails.id,
+      const result = await axios.post("/api/generate-test-cases", {
+        userId: user?.userDetails?.id,
         repoId: repo.repoId,
         owner: repo.owner,
         repo: repo.name,
         branch: repo.defaultBranch,
       });
+
+      if (result.data?.credits !== undefined && user?.setCredits) {
+        user.setCredits(result.data.credits);
+      }
 
       await addTestCases(repo.repoId);
     } catch (error) {
@@ -357,7 +366,8 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                         className="gap-2"
                         disabled={
                           loadingRepoId ===
-                          repo.repoId
+                          repo.repoId ||
+                          user?.credits <= 0
                         }
                         onClick={() =>
                           handleGenerateTestCases(

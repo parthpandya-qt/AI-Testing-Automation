@@ -168,6 +168,15 @@ export async function POST(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        if (user.credits <= 0) {
+            return NextResponse.json(
+                {
+                    error: "Insufficient credits. Please purchase more credits to generate test cases.",
+                },
+                { status: 403 }
+            );
+        }
+
         const body = await req.json();
         const githubToken = req.cookies.get("github_token")?.value;
 

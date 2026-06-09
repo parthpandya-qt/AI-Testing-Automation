@@ -1,11 +1,12 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge"
-import React from "react";
+import React, { useContext } from "react";
 import { TestCasetype } from "./UserReposLists";
 import { Button } from "../ui/button";
 import { Play, RefreshCw } from "lucide-react";
 import TestCaseSettingDialog from "./TestCaseSettingDialog";
 import TestExecutionModal from "./TestExecutionModal";
+import { UserDetailContext } from "@/context/userDetailContext";
 
 type Props = {
    testCaseList: TestCasetype[];
@@ -14,6 +15,7 @@ type Props = {
 };
 
 function TestCases({ testCaseList, onReload, repository }: Props) {
+  const user = useContext(UserDetailContext);
   const[selectedTestCases, setSelectedTestCases] = React.useState<number[]>([]);
   const[isModalOpen, setIsModalOpen] = React.useState(false);
 
@@ -30,7 +32,13 @@ return (
       
       <div className = "flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mt-5 px-5">
         <h2 className="text-2xl font-semibold">Generated Test Cases</h2>
-        <Button variant="outline" size="sm" className="bg-black text-white w-full sm:w-auto mt-2 sm:mt-0" onClick={onReload}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="bg-black text-white w-full sm:w-auto mt-2 sm:mt-0" 
+          disabled={user?.credits <= 0}
+          onClick={onReload}
+        >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
