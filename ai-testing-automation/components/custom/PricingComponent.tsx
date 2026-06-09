@@ -156,7 +156,7 @@ export default function PricingComponent() {
                     }
                     className={
                       planStored === "free"
-                        ? "w-full rounded-lg bg-gray-500 py-2.5 text-sm font-semibold text-white cursor-not-allowed"
+                        ? "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
                         : "w-full rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
                     }
                   >
