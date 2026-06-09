@@ -70,7 +70,7 @@ export default function SupportChat() {
 
   return (
     <>
-      {/* Floating Button */}
+     
       <button
         onClick={() => setOpen(!open)}
         className="fixed bottom-6 right-6 rounded-full p-3 bg-slate-900 text-white shadow-lg hover:bg-slate-800 transition-colors z-50"
@@ -83,15 +83,15 @@ export default function SupportChat() {
         />
       </button>
 
-      {/* Chat Window */}
+     
       {open && (
         <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:right-6 w-[calc(100vw-2rem)] sm:w-96 h-[500px] max-h-[calc(100vh-120px)] bg-white border rounded-xl shadow-xl flex flex-col z-50">
-          {/* Header */}
+       
           <div className="p-4 border-b font-semibold text-slate-900">
             AI Support
           </div>
 
-          {/* Messages */}
+       
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
               <p className="text-sm text-slate-500">
@@ -125,7 +125,7 @@ export default function SupportChat() {
             )}
           </div>
 
-          {/* Input Area */}
+        
           <div className="border-t p-3 flex gap-2">
             <input
               type="text"

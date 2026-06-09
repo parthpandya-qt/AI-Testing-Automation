@@ -38,15 +38,10 @@ async function readGithubFile({
     }
   );
 
-  if (!res.ok) {
-    return null;
-  }
+  if (!res.ok) return null;
 
   const data = await res.json();
-
-  if (!data.content) {
-    return null;
-  }
+  if (!data.content) return null;
 
   const decodedContent = Buffer.from(data.content, "base64").toString("utf-8");
 
@@ -122,7 +117,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Fetch target files context
       const targetFiles = testCase.targetFiles || [];
       let repoContext = "";
 
@@ -142,16 +136,11 @@ export async function POST(req: NextRequest) {
         const validFiles = fileContents.filter(Boolean);
         repoContext = validFiles
           .map(
-            (file: any) => `
-File Path: ${file.path}
-File Content:
-${file.content}
-`
+            (file: any) => `\nFile Path: ${file.path}\nFile Content:\n${file.content}\n`
           )
           .join("\n\n-------------------------------\n\n");
       }
 
-      // Build global instructions and runtime prompts
       const globalIns = repoRecord?.globalInstruction
         ? `\n[GLOBAL PROJECT INSTRUCTIONS] (Follow strictly):\n${repoRecord.globalInstruction}\n`
         : "";
@@ -160,7 +149,6 @@ ${file.content}
         ? `\n[ADDITIONAL RUNTIME INSTRUCTIONS] (Follow strictly):\n${customPrompt}\n`
         : "";
 
-      // Prompt Gemini for Playwright code string
       const prompt = `
 You are an expert QA automation engineer.
 Your task is to write a Playwright Node.js script body that executes a test case on an application running at URL: "${resolvedBaseUrl}".
@@ -199,7 +187,7 @@ If a specific selector or locator might fail, use flexible text-matching locator
 ALWAYS wait for an element to be visible before interacting with it: \`await page.waitForSelector('selector-or-text', { state: 'visible', timeout: 4000 }).catch(() => {})\`.
 Scroll elements into view before interaction to prevent out-of-bounds clicks: \`await locator.scrollIntoViewIfNeeded().catch(() => {})\`.
 If standard click fails or throws a timeout, try forcing it or using DOM-based dispatch click as a safe backup:
-\`await locator.click({ force: true, timeout: 2000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) })\`.
+\`await locator.click({ force: true, timeout: 2000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) }\`);
 Introduce generous settling times:
 Add \`await page.waitForTimeout(1000)\` after major actions (clicks, inputs, typing, form submissions) to allow React, Next.js, or server state updates to propagate and elements to render.
 Use lenient, substring-based assertions:
@@ -221,7 +209,6 @@ Just return the executable code.
       });
 
       let generatedCode = response.text || "";
-      // Clean up any stray markdown wrappers just in case
       generatedCode = generatedCode.replace(/^```javascript\s*/i, "");
       generatedCode = generatedCode.replace(/^```js\s*/i, "");
       generatedCode = generatedCode.replace(/```$/, "");
@@ -236,7 +223,6 @@ Just return the executable code.
 
       scriptText = generatedCode;
 
-      // Save the generated script immediately to database
       await db
         .update(TestCasesTable)
         .set({
@@ -245,7 +231,6 @@ Just return the executable code.
         })
         .where(eq(TestCasesTable.id, testCase.id));
     } else {
-      // 3. Mark database status as running
       await db
         .update(TestCasesTable)
         .set({ status: "running" })
@@ -254,30 +239,9 @@ Just return the executable code.
 
     const logs: string[] = [];
     const customConsole = {
-      log: (...args: any[]) =>
-        logs.push(
-          args
-            .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
-            .join(" ")
-        ),
-      error: (...args: any[]) =>
-        logs.push(
-          "[ERROR] " +
-            args
-              .map((a) =>
-                typeof a === "object" ? JSON.stringify(a) : String(a)
-              )
-              .join(" ")
-        ),
-      warn: (...args: any[]) =>
-        logs.push(
-          "[WARN] " +
-            args
-              .map((a) =>
-                typeof a === "object" ? JSON.stringify(a) : String(a)
-              )
-              .join(" ")
-        ),
+      log: (...args: any[]) => logs.push(args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")),
+      error: (...args: any[]) => logs.push("[ERROR] " + args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")),
+      warn: (...args: any[]) => logs.push("[WARN] " + args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")),
     };
 
     let session: any = null;
@@ -285,41 +249,33 @@ Just return the executable code.
     let isLocal = false;
 
     try {
-      // Check if we are trying to access a localhost environment
       if (resolvedBaseUrl.includes("localhost") || resolvedBaseUrl.includes("127.0.0.1")) {
         try {
-          logs.push(`[SYSTEM] Target URL is localhost. Attempting local Chromium execution to access it directly...`);
+          logs.push(`[SYSTEM] Target URL is localhost. Attempting local Chromium execution...`);
           browser = await chromium.launch({ headless: true });
           isLocal = true;
           logs.push(`[SYSTEM] Local Chromium launched successfully.`);
         } catch (localErr: any) {
           logs.push(`[SYSTEM WARNING] Local Chromium launch failed: ${localErr.message || String(localErr)}`);
-          logs.push(`[SYSTEM WARNING] Troubleshooting Localhost Testing:`);
-          logs.push(`[SYSTEM WARNING] 1. To run tests locally, install Chromium by executing "npx playwright install chromium" in your project folder.`);
-          logs.push(`[SYSTEM WARNING] 2. Alternatively, to run tests in the Browserbase cloud, expose your local server using a tunnel tool like ngrok (e.g. "ngrok http 3000") and use the public tunnel URL as your Target Website URL.`);
+          logs.push(`[SYSTEM WARNING] 1. Run "npx playwright install chromium" locally.`);
+          logs.push(`[SYSTEM WARNING] 2. Or expose via ngrok and change your Target Website URL.`);
         }
       }
 
       if (!browser) {
         logs.push(`[SYSTEM] Attempting Browserbase cloud execution...`);
-        // 4. Create Browserbase Session
         session = await bb.sessions.create({
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
         });
 
-        logs.push(
-          `[SYSTEM] Browserbase session created successfully with ID: ${session.id}`
-        );
-
-        // 5. Connect Playwright to Session (Using native context connectUrl property)
+        logs.push(`[SYSTEM] Browserbase session created successfully with ID: ${session.id}`);
+        logs.push(`[SYSTEM] Connected to Browserbase cloud browser, executing script...`);
         browser = await chromium.connectOverCDP(session.connectUrl);
       }
       
       const context = isLocal ? await browser.newContext() : browser.contexts()[0];
-      
-      // Intercept network requests to inject the bypass header ONLY for same-origin requests
-      // This completely avoids CORS preflight failures on third-party CDNs (Clerk, Google Fonts)
       const baseOrigin = new URL(resolvedBaseUrl).origin;
+
       await context.route("**/*", async (route: any, request: any) => {
         try {
           const url = new URL(request.url());
@@ -329,31 +285,22 @@ Just return the executable code.
             url.hostname.includes("localhost") ||
             url.hostname.includes("vercel.app")
           ) {
-            const headers = {
-              ...request.headers(),
-              "x-test-bypass": "true",
-            };
+            const headers = { ...request.headers(), "x-test-bypass": "true" };
             await route.continue({ headers });
           } else {
             await route.continue();
           }
-        } catch (routeErr) {
+        } catch {
           await route.continue().catch(() => {});
         }
       });
 
-      // Fallback in case a page is not already initialized by Browserbase proxy
       const page = isLocal ? await context.newPage() : (context.pages()[0] || (await context.newPage()));
 
-      // 6. Listen to Browser Console Events
       page.on("console", (msg: any) => {
         logs.push(`[BROWSER] [${msg.type().toUpperCase()}] ${msg.text()}`);
       });
 
-      logs.push(`[SYSTEM] Connected to Browserbase cloud browser, executing script...`);
-
-      // 7. Compile and run script
-      // Resolve localhost to 127.0.0.1 and translate production Vercel URLs to the local execution domain
       let resolvedScriptText = scriptText;
       if (resolvedScriptText) {
         resolvedScriptText = resolvedScriptText.replace(/https:\/\/ai-testing-automation\.vercel\.app\/?/g, resolvedBaseUrl);
@@ -366,55 +313,20 @@ Just return the executable code.
       const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
       const runFn = new AsyncFunction("page", "assert", "console", "testCase", resolvedScriptText);
 
-      // Mock assertion helper for runtime container if script assumes assert is global
       const assertHelper = (condition: boolean, message?: string) => {
-        if (!condition) {
-          throw new Error(message || "Assertion failed");
-        }
+        if (!condition) throw new Error(message || "Assertion failed");
       };
 
       await runFn(page, assertHelper, customConsole, testCase);
-
       logs.push(`[SYSTEM] Script execution completed successfully without errors.`);
 
-      // 8. Clean up session and browser
       await page.close().catch(() => {});
       await browser.close().catch(() => {});
 
-      // 9. Update DB Status to passed
       await db
         .update(TestCasesTable)
         .set({
           status: "passed",
-          browserbaseScript: scriptText,
-          logs: logs,
-          sessionId: session.id,
-          sessionUrl: `https://www.browserbase.com/sessions/${session.id}`,
-        })
-        .where(eq(TestCasesTable.id, testCase.id));
-
-      return NextResponse.json({
-        success: true,
-        status: "passed",
-        sessionId: session.id,
-        sessionUrl: `https://www.browserbase.com/sessions/${session.id}`,
-        logs,
-        browserbaseScript: scriptText,
-      });
-    } catch (execError: any) {
-      console.error("Script execution error:", execError);
-      logs.push(`[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`);
-
-      // Clean up session and browser if still active
-      if (browser) {
-        await browser.close().catch(() => {});
-      }
-
-      // 10. Update DB Status to failed
-      await db
-        .update(TestCasesTable)
-        .set({
-          status: "failed",
           browserbaseScript: scriptText,
           logs: logs,
           sessionId: session?.id || null,
@@ -423,11 +335,38 @@ Just return the executable code.
         .where(eq(TestCasesTable.id, testCase.id));
 
       return NextResponse.json({
+        success: true,
+        status: "passed",
+        sessionId: session?.id || null,
+        sessionUrl: session ? `https://www.browserbase.com/sessions/${session.id}` : null,
+        logs,
+        browserbaseScript: scriptText,
+      });
+    } catch (execError: any) {
+      console.error("Script execution error:", execError);
+      logs.push(`[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`);
+
+      if (browser) {
+        await browser.close().catch(() => {});
+      }
+
+      await db
+        .update(TestCasesTable)
+        .set({
+          status: "failed",
+          browserbaseScript: scriptText,
+          logs: logs,
+          sessionId: session?.id || null,
+          sessionUrl: session ? `https://www.browserbase.com/sessions/${session?.id}` : null, // Fixed: Added safe chaining here
+        })
+        .where(eq(TestCasesTable.id, testCase.id));
+
+      return NextResponse.json({
         success: false,
         status: "failed",
         error: execError.message || String(execError),
-        sessionId: session?.id,
-        sessionUrl: session ? `https://www.browserbase.com/sessions/${session.id}` : null,
+        sessionId: session?.id || null,
+        sessionUrl: session ? `https://www.browserbase.com/sessions/${session?.id}` : null, // Fixed: Added safe chaining here
         logs,
         browserbaseScript: scriptText,
       });
@@ -435,10 +374,7 @@ Just return the executable code.
   } catch (error: any) {
     console.error("API endpoint error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "An unexpected error occurred",
-      },
+      { success: false, error: error.message || "An unexpected error occurred" },
       { status: 500 }
     );
   }
