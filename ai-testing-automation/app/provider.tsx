@@ -58,6 +58,7 @@ function Provider({
   const createUser =
     async () => {
       if (hasFetched) return;
+      if (isLoaded && !isSignedIn) return;
 
       setHasFetched(true);
 
@@ -99,6 +100,22 @@ function Provider({
         );
       }
     };
+
+  useEffect(() => {
+    // Reset state when user logs out or changes
+    setUserdetails(null);
+    setHasFetched(false);
+    setCredits(1000);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      // Clear github token cookie when signed out
+      fetch("/api/github/logout", { method: "POST" }).catch((err) =>
+        console.error("Logout API Error:", err)
+      );
+    }
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     let active = true;

@@ -4,11 +4,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
-import {db} from "@/db";
-import { TestCasesTable } from "@/db/schema";
-
-import {users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { TestCasesTable, users, repositories } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
@@ -164,20 +163,23 @@ export async function POST(
     req: NextRequest
 ) {
     try {
+        const user = await getAuthenticatedUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const body = await req.json();
         const githubToken = req.cookies.get("github_token")?.value;
 
         const {
-            userId,
             repoId,
             owner,
             repo,
             branch = "main",
-            
         } = body;
 
         if (
-            !userId ||
+            !repoId ||
             !owner ||
             !repo ||
             !githubToken
@@ -185,11 +187,21 @@ export async function POST(
             return NextResponse.json(
                 {
                     error:
-                        "userId, owner, repo and githubToken are required",
+                        "repoId, owner, repo and githubToken are required",
                 },
                 { status: 400 }
             );
         }
+
+        // Verify repository ownership
+        const repoCheck = await db.select().from(repositories)
+            .where(and(eq(repositories.repoId, Number(repoId)), eq(repositories.userId, user.id)))
+            .limit(1);
+        if (repoCheck.length === 0) {
+            return NextResponse.json({ error: "Forbidden: You do not own this repository" }, { status: 403 });
+        }
+
+        const userIdStr = String(user.id);
 
         const repoFiles =
             await getRepoTree({
@@ -410,7 +422,7 @@ Each test case must include:
                         (
                             testCase: any
                         ) => ({
-                            userId,
+                            userId: userIdStr,
                             repoId,
 
                             repoName:
@@ -459,7 +471,7 @@ const existingUser =
   await db.query.users.findFirst({
     where: eq(
       users.id,
-      Number(userId)
+      user.id
     ),
   });
 let newCredits = 0;
@@ -477,7 +489,7 @@ if (existingUser) {
     .where(
       eq(
         users.id,
-        Number(userId)
+        user.id
       )
     );
 }

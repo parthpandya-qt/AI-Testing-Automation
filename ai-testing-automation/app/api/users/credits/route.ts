@@ -1,61 +1,33 @@
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import { NextResponse, NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { getAuthenticatedUser } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest
-) {
+export async function GET(req: NextRequest) {
   try {
-    const userId = Number(
-      req.nextUrl.searchParams.get("userId")
-    );
-
-    if (!userId) {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
       return NextResponse.json(
         {
           success: false,
-          message: "User ID is required",
+          message: "Unauthorized",
         },
         {
-          status: 400,
-        }
-      );
-    }
-
-    const user =
-      await db.query.users.findFirst({
-        where: eq(users.id, userId),
-      });
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "User not found",
-        },
-        {
-          status: 404,
+          status: 401,
         }
       );
     }
 
     return NextResponse.json({
       success: true,
-      credits: user.credits,
-      plan: user.plan,
+      credits: authUser.credits,
+      plan: authUser.plan,
     });
   } catch (error) {
-    console.error(
-      "Credits API Error:",
-      error
-    );
+    console.error("Credits API Error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Failed to fetch credits",
+        message: "Failed to fetch credits",
       },
       {
         status: 500,

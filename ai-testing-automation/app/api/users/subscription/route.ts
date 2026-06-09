@@ -2,19 +2,18 @@ import { db } from "@/db";
 import { users } from "@/db/schema"; 
 import { NextRequest, NextResponse } from "next/server";
 import { eq, sql } from "drizzle-orm";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-   
-    const urlId = req.nextUrl.searchParams.get("id");
-    const userId = urlId ? Number(urlId) : null;
-
-    if (!userId || isNaN(userId)) {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
       return NextResponse.json(
-        { success: false, message: "Invalid or missing User ID parameter" },
-        { status: 400 }
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
       );
     }
+
     const body = await req.json();
     const targetEmail = body?.email;
 
@@ -25,13 +24,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-
     const updatedUser = await db
       .update(users)
       .set({ 
         subscriberEmails: sql`array_append(${users.subscriberEmails}, ${targetEmail}::text)` 
       })
-      .where(eq(users.id, userId))
+      .where(eq(users.id, authUser.id))
       .returning();
 
     if (updatedUser.length === 0) {

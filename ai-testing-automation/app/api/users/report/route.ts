@@ -1,49 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
-  users,
   repositories,
   TestCasesTable,
   supportTickets,
 } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getAuthenticatedUser } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest
-) {
-    console.log("REPORT API HIT");
+export async function GET(req: NextRequest) {
   try {
-    const userId = Number(
-      req.nextUrl.searchParams.get("userId")
-    );
-
-    if (!userId) {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) {
       return NextResponse.json(
         {
           success: false,
-          message: "User ID is required",
+          message: "Unauthorized",
         },
         {
-          status: 400,
+          status: 401,
         }
       );
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "User not found",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
+    const userId = authUser.id;
 
     const repos = await db
       .select()
@@ -74,33 +54,20 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-
-      totalRepositories:
-        repos.length,
-
-      totalTestCases:
-        testCases.length,
-
-      totalSupportTickets:
-        tickets.length,
-
-      credits: user.credits,
-
-      plan: user.plan,
-
-      createdAt: user.createdAt,
+      totalRepositories: repos.length,
+      totalTestCases: testCases.length,
+      totalSupportTickets: tickets.length,
+      credits: authUser.credits,
+      plan: authUser.plan,
+      createdAt: authUser.createdAt,
     });
   } catch (error) {
-    console.error(
-      "Report API Error:",
-      error
-    );
+    console.error("Report API Error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Failed to fetch report data",
+        message: "Failed to fetch report data",
       },
       {
         status: 500,
