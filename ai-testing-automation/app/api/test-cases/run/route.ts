@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "placeholder-key",
@@ -53,6 +54,11 @@ async function readGithubFile({
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { testCaseId, baseUrl, mode = "generate", customPrompt = "" } = body;
 
@@ -77,6 +83,10 @@ export async function POST(req: NextRequest) {
 
     if (!testCase) {
       return NextResponse.json({ error: "Test case not found" }, { status: 404 });
+    }
+
+    if (testCase.userId !== String(user.id)) {
+      return NextResponse.json({ error: "Forbidden: You do not own this test case" }, { status: 403 });
     }
 
     // Fetch repository settings for global instructions
@@ -110,17 +120,18 @@ export async function POST(req: NextRequest) {
       const cookiesStore = await cookies();
       const githubToken = cookiesStore.get("github_token")?.value;
 
-      if (!githubToken) {
+      const targetFiles = testCase.targetFiles || [];
+
+      if (targetFiles.length > 0 && !githubToken) {
         return NextResponse.json(
-          { error: "GitHub authentication token is missing or expired" },
+          { error: "GitHub authentication token is missing or expired. Please connect your GitHub account." },
           { status: 401 }
         );
       }
 
-      const targetFiles = testCase.targetFiles || [];
       let repoContext = "";
 
-      if (targetFiles.length > 0) {
+      if (targetFiles.length > 0 && githubToken) {
         const fileContents = await Promise.all(
           targetFiles.map((path) =>
             readGithubFile({
