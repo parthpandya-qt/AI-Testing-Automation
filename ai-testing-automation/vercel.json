@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "app/api/test-cases/run/route.ts": {
+      "includeFiles": "node_modules/playwright-core/browsers.json"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/subscription",
