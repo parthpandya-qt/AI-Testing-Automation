@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     // 2. Generate script using Gemini if forced, or if no script is cached
     if (forceRegenerate) {
       const cookiesStore = await cookies();
-      const githubToken = cookiesStore.get("github_token")?.value;
+      const githubToken = cookiesStore.get(`github_token_${user.id}`)?.value || cookiesStore.get("github_token")?.value;
 
       const targetFiles = testCase.targetFiles || [];
 

@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -45,7 +46,10 @@ export async function GET(req: NextRequest) {
     new URL("/workspace", req.url)
   );
 
-  response.cookies.set("github_token", token, {
+  const user = await getAuthenticatedUser();
+  const cookieName = user ? `github_token_${user.id}` : "github_token";
+
+  response.cookies.set(cookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 30,

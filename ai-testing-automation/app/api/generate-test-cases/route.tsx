@@ -178,7 +178,7 @@ export async function POST(
         }
 
         const body = await req.json();
-        const githubToken = req.cookies.get("github_token")?.value;
+        const githubToken = req.cookies.get(`github_token_${user.id}`)?.value || req.cookies.get("github_token")?.value;
 
         const {
             repoId,
