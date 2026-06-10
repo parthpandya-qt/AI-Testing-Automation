@@ -52,6 +52,7 @@ await db
   .update(users)
   .set({
     plan: "pro",
+    credits: 10000,
     subscriptionStart: new Date(),
     subscriptionEnd: new Date(new Date().setMonth(new Date().getMonth() + 1)) 
   })
