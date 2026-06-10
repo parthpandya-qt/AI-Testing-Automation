@@ -13,6 +13,11 @@ export async function POST(req:NextRequest){
     
     
     if (!user) {
+        // ONLY use development fallback if Clerk is NOT configured
+        const isClerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !!process.env.CLERK_SECRET_KEY;
+        if (isClerkEnabled) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         
         try {
             let existingUsers = await db.select().from(users).limit(1);

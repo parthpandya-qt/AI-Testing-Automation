@@ -119,9 +119,11 @@ function Provider({
 
   useEffect(() => {
     let active = true;
+    const isClerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    let timer: NodeJS.Timeout | null = null;
 
-    const timer =
-      setTimeout(() => {
+    if (!isClerkEnabled) {
+      timer = setTimeout(() => {
         if (
           active &&
           !userDetails &&
@@ -130,25 +132,24 @@ function Provider({
           createUser();
         }
       }, 1500);
+    }
 
     if (
       isLoaded &&
       isSignedIn &&
       user?.id
     ) {
-      clearTimeout(
-        timer
-      );
-
+      if (timer) {
+        clearTimeout(timer);
+      }
       createUser();
     }
 
     return () => {
       active = false;
-
-      clearTimeout(
-        timer
-      );
+      if (timer) {
+        clearTimeout(timer);
+      }
     };
   }, [
     isLoaded,

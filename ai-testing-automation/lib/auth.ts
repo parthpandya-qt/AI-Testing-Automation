@@ -8,6 +8,12 @@ export async function getAuthenticatedUser() {
   try {
     const clerkUser = await currentUser();
     if (!clerkUser) {
+      // ONLY use development fallback if Clerk is NOT configured
+      const isClerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !!process.env.CLERK_SECRET_KEY;
+      if (isClerkEnabled) {
+        return null;
+      }
+
       // Development fallback
       const existingUsers = await db.select().from(users).limit(1);
       if (existingUsers.length > 0) {
