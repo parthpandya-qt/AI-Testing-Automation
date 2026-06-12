@@ -7,8 +7,6 @@ import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { getAuthenticatedUser } from "@/lib/auth";
-import fs from "fs";
-import path from "path";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "placeholder-key",
@@ -129,6 +127,8 @@ export async function POST(req: NextRequest) {
         const fileContents = await Promise.all(
           targetFiles.map(async (filePath) => {
             try {
+              const fs = await import("fs");
+              const path = await import("path");
               const localPath = path.join(process.cwd(), filePath);
               if (fs.existsSync(localPath)) {
                 const content = fs.readFileSync(localPath, "utf-8");
