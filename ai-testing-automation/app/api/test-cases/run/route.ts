@@ -7,6 +7,8 @@ import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { getAuthenticatedUser } from "@/lib/auth";
+import fs from "fs";
+import path from "path";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "placeholder-key",
@@ -121,30 +123,46 @@ export async function POST(req: NextRequest) {
       const githubToken = cookiesStore.get(`github_token_${user.id}`)?.value || cookiesStore.get("github_token")?.value;
 
       const targetFiles = testCase.targetFiles || [];
-
-      if (targetFiles.length > 0 && !githubToken) {
-        return NextResponse.json(
-          { error: "GitHub authentication token is missing or expired. Please connect your GitHub account." },
-          { status: 401 }
-        );
-      }
-
       let repoContext = "";
 
-      if (targetFiles.length > 0 && githubToken) {
+      if (targetFiles.length > 0) {
         const fileContents = await Promise.all(
-          targetFiles.map((path) =>
-            readGithubFile({
-              owner: testCase.repoOwner,
-              repo: testCase.repoName,
-              branch: testCase.branch || "main",
-              path,
-              githubToken,
-            })
-          )
+          targetFiles.map(async (filePath) => {
+            try {
+              const localPath = path.join(process.cwd(), filePath);
+              if (fs.existsSync(localPath)) {
+                const content = fs.readFileSync(localPath, "utf-8");
+                return {
+                  path: filePath,
+                  content: content.slice(0, 5000),
+                };
+              }
+            } catch (err) {
+              // Ignore and fallback
+            }
+
+            if (githubToken) {
+              return readGithubFile({
+                owner: testCase.repoOwner,
+                repo: testCase.repoName,
+                branch: testCase.branch || "main",
+                path: filePath,
+                githubToken,
+              });
+            }
+            return null;
+          })
         );
 
         const validFiles = fileContents.filter(Boolean);
+
+        if (validFiles.length === 0 && !githubToken) {
+          return NextResponse.json(
+            { error: "GitHub authentication token is missing or expired. Please connect your GitHub account." },
+            { status: 401 }
+          );
+        }
+
         repoContext = validFiles
           .map(
             (file: any) => `\nFile Path: ${file.path}\nFile Content:\n${file.content}\n`
@@ -160,6 +178,11 @@ export async function POST(req: NextRequest) {
         ? `\n[ADDITIONAL RUNTIME INSTRUCTIONS] (Follow strictly):\n${customPrompt}\n`
         : "";
 
+      // Ensure target route concatenation doesn't result in double slashes
+      const cleanBaseUrl = resolvedBaseUrl.endsWith('/') ? resolvedBaseUrl.slice(0, -1) : resolvedBaseUrl;
+      const cleanTargetRoute = (testCase.targetRoute || "/").startsWith('/') ? (testCase.targetRoute || "/") : `/${testCase.targetRoute || ""}`;
+      const targetUrl = `${cleanBaseUrl}${cleanTargetRoute}`;
+
       const prompt = `
 You are an expert QA automation engineer.
 Your task is to write a Playwright Node.js script body that executes a test case on an application running at URL: "${resolvedBaseUrl}".
@@ -168,6 +191,7 @@ Title: ${testCase.title}
 Description: ${testCase.description}
 Target Route: ${testCase.targetRoute || "/"}
 Expected Result: ${testCase.expectedResult}
+Test Case Type: ${testCase.type}
 ${globalIns}
 ${tempIns}
 Source File Context for Reference (Read this to extract exact tags, component text, input fields, and class names):
@@ -187,26 +211,43 @@ function assert(condition, message) {
 }
 Rules for your code:
 DO NOT import playwright, browserbase, assert, or any other modules.
-Navigate to the target route using:
-await page.goto(\`${resolvedBaseUrl}\${testCase.targetRoute || ""}\`, { waitUntil: 'load', timeout: 15000 })
-followed by a short settle wait: \`await page.waitForTimeout(1000)\`
-Carefully analyze the Source File Context provided to find the EXACT forms, inputs, placeholders, buttons, and elements. Look for:
-Input names, placeholder texts, or labels (e.g. \`page.getByPlaceholder('Enter your name')\` or \`page.locator('input[name="email"]')\`).
-Button texts (e.g. \`page.getByRole('button', { name: /submit/i })\` or \`page.locator('button:has-text("Submit")')\`).
-Apply extreme selector resilience:
-If a specific selector or locator might fail, use flexible text-matching locators or check multiple variations.
-ALWAYS wait for an element to be visible before interacting with it: \`await page.waitForSelector('selector-or-text', { state: 'visible', timeout: 4000 }).catch(() => {})\`.
-Scroll elements into view before interaction to prevent out-of-bounds clicks: \`await locator.scrollIntoViewIfNeeded().catch(() => {})\`.
-If standard click fails or throws a timeout, try forcing it or using DOM-based dispatch click as a safe backup:
-\`await locator.click({ force: true, timeout: 2000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) }\`);
-Introduce generous settling times:
-Add \`await page.waitForTimeout(1000)\` after major actions (clicks, inputs, typing, form submissions) to allow React, Next.js, or server state updates to propagate and elements to render.
-Use lenient, substring-based assertions:
-Do NOT use strict case-sensitive equality matches on text contents.
-Instead, search for presence or substring content in a relaxed, case-insensitive way. E.g.:
-\`const bodyText = await page.innerText('body');\`
-\`assert(bodyText.toLowerCase().includes('\${testCase?.expectedResult?.toLowerCase().replace(/'/g, "\\\\'")}\'), 'Expected result state not matched');\`
-Or assert visibility of key success elements instead of exact string matching.
+
+1. Navigation and API endpoints:
+   - For UI/Form/Auth tests: Navigate to the target route using:
+     await page.goto(\`${targetUrl}\`, { waitUntil: 'load', timeout: 15000 })
+     followed by a short settle wait: \`await page.waitForTimeout(1000)\`
+   - For API tests: DO NOT use page.goto() to navigate directly to the target route endpoint if it is an API route (e.g. routes under /api/) because doing a GET request on a POST-only API endpoint will cause a 405 error and fail navigation.
+     Instead, perform the API request directly using Playwright's page.request context methods (like page.request.post() or page.request.get()).
+     IMPORTANT: When making API requests via page.request, you MUST include the header 'x-test-bypass': 'true' in the request headers options to bypass Clerk authentication and run successfully.
+     If you need to establish a browser/origin context first, navigate to the base website URL \`${cleanBaseUrl}\` first using page.goto() before calling page.request.
+
+2. State Cleaning (localStorage/Cookies):
+   - NEVER call page.evaluate(() => localStorage.clear()) or clear cookies/storage BEFORE calling page.goto(). Doing so on 'about:blank' will throw a SecurityError/DOMException.
+   - Always navigate to the website (either the target URL or the base URL) first, then clear/modify localStorage or cookies if needed.
+
+3. Exception Handling & Response Access:
+   - DO NOT call page.mainFrame().response() as this method does not exist on a Playwright Frame and throws a TypeError. To inspect responses, check the return value of page.goto() or use page.waitForResponse().
+
+4. Element Interactions (for UI tests):
+   Carefully analyze the Source File Context provided to find the EXACT forms, inputs, placeholders, buttons, and elements. Look for:
+   Input names, placeholder texts, or labels (e.g. \`page.getByPlaceholder('Enter your name')\` or \`page.locator('input[name="email"]')\`).
+   Button texts (e.g. \`page.getByRole('button', { name: /submit/i })\` or \`page.locator('button:has-text("Submit")')\`).
+   Apply extreme selector resilience:
+   If a specific selector or locator might fail, use flexible text-matching locators or check multiple variations.
+   ALWAYS wait for an element to be visible before interacting with it: \`await page.waitForSelector('selector-or-text', { state: 'visible', timeout: 4000 }).catch(() => {})\`.
+   Scroll elements into view before interaction to prevent out-of-bounds clicks: \`await locator.scrollIntoViewIfNeeded().catch(() => {})\`.
+   If standard click fails or throws a timeout, try forcing it or using DOM-based dispatch click as a safe backup:
+   \`await locator.click({ force: true, timeout: 2000 }).catch(async () => { await locator.evaluate(node => node.click()).catch(() => {}) }\`);
+   Introduce generous settling times:
+   Add \`await page.waitForTimeout(1000)\` after major actions (clicks, inputs, typing, form submissions) to allow React, Next.js, or server state updates to propagate and elements to render.
+   Use lenient, substring-based assertions:
+   Do NOT use strict case-sensitive equality matches on text contents.
+   Instead, search for presence or substring content in a relaxed, case-insensitive way. E.g.:
+   \`const bodyText = await page.innerText('body');\`
+   \`assert(bodyText.toLowerCase().includes('\${testCase?.expectedResult?.toLowerCase().replace(/'/g, "\\\\'")}\'), 'Expected result state not matched');\`
+   Or assert visibility of key success elements instead of exact string matching.
+   For ID fields (like 'id', 'userId', etc.), be lenient with types: check if they exist and are either a string or a number (e.g. \`typeof id === 'string' || typeof id === 'number'\`). Do NOT strictly assert that an ID is a string since database serial IDs are numbers.
+
 Print descriptive logs at each step using \`console.log()\` to make debugging a breeze for the user.
 Return ONLY the raw JavaScript executable code.
 DO NOT wrap the code in markdown code blocks like \`\`\`javascript or \`\`\`.
