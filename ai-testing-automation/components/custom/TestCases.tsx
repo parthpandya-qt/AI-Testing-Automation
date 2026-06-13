@@ -7,6 +7,8 @@ import { Play, RefreshCw } from "lucide-react";
 import TestCaseSettingDialog from "./TestCaseSettingDialog";
 import TestExecutionModal from "./TestExecutionModal";
 import { UserDetailContext } from "@/context/userDetailContext";
+import Image from "next/image";
+import axios from "axios";
 
 type Props = {
    testCaseList: TestCasetype[];
@@ -18,6 +20,11 @@ function TestCases({ testCaseList, onReload, repository }: Props) {
   const user = useContext(UserDetailContext);
   const[selectedTestCases, setSelectedTestCases] = React.useState<number[]>([]);
   const[isModalOpen, setIsModalOpen] = React.useState(false);
+  const [testCases, setTestCases] = React.useState(testCaseList);
+
+React.useEffect(() => {
+  setTestCases(testCaseList);
+}, [testCaseList]);
 
   const handleSelectedTestCase = (checked: boolean | "indeterminate", id:number) => {
     if(checked){
@@ -26,6 +33,20 @@ function TestCases({ testCaseList, onReload, repository }: Props) {
       setSelectedTestCases((prev) => prev.filter((testCaseId) => testCaseId !== id));
     }
   }
+  const deleteTestCaseSingle = async (testCaseId: number) => {
+  try {
+    await axios.delete(
+      `/api/user-repo/deleteSingleRepo?repoId=${testCaseId}`
+    );
+
+    setTestCases(prev =>
+      prev.filter(tc => tc.id !== testCaseId)
+    );
+  } catch (error) {
+    console.log("delete error:", error);
+  }
+};
+ 
 
 return (
     <div>
@@ -45,7 +66,7 @@ return (
       </div>
 
       <div>
-        {testCaseList.map((testCase) => (
+        {testCases.map((testCase) => (
           <div
             key={testCase.id}
             className="flex flex-col sm:flex-row justify-between rounded-xl p-4 mt-4 bg-gray-50 gap-4 border border-gray-200"
@@ -81,6 +102,19 @@ return (
                 {testCase.status}
               </Badge>}
               <TestCaseSettingDialog testCase={testCase} setReload={onReload} />
+              
+
+              <Button
+                className="bg-gray-100 border-0 p-0 hover:bg-gray-200 rounded transition duration-200 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                onClick={() => deleteTestCaseSingle(testCase.id)}
+              >
+              <Image
+                src="/delete.svg"
+                alt="Delete"
+                width={20}
+                height={20}
+              />
+            </Button>
             </div>
           </div>
         ))}
@@ -103,7 +137,7 @@ return (
             setIsModalOpen(false);
             onReload();
           }}
-          testCases={testCaseList.filter((tc) => selectedTestCases.includes(tc.id))}
+          testCases={testCases.filter((tc) => selectedTestCases.includes(tc.id))}
           repository={repository}
         />
     </div>
