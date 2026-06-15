@@ -16,53 +16,58 @@ export async function DELETE(req: NextRequest) {
         }
 
         const { searchParams } = new URL(req.url);
+        const testCaseId = Number(searchParams.get("repoId"));
 
-        const testCaseIdParam = searchParams.get("testCaseId");
+        console.log("Deleting test case:", testCaseId);
 
-        if (!testCaseIdParam) {
+        if (!testCaseId) {
             return NextResponse.json(
                 { error: "Test case ID is required" },
                 { status: 400 }
             );
         }
 
-        const testCaseId = Number(testCaseIdParam);
-
-        if (isNaN(testCaseId)) {
-            return NextResponse.json(
-                { error: "Invalid test case ID" },
-                { status: 400 }
-            );
-        }
-
-        // Fetch test case and repository owner in a single query
-        const result = await db
-            .select({
-                testCaseId: TestCasesTable.id,
-                ownerId: repositories.userId,
-            })
+        // Find test case
+        const testCase = await db
+            .select()
             .from(TestCasesTable)
-            .innerJoin(
-                repositories,
-                eq(TestCasesTable.repoId, repositories.repoId)
-            )
             .where(eq(TestCasesTable.id, testCaseId))
             .limit(1);
 
-        if (result.length === 0) {
+        if (testCase.length === 0) {
             return NextResponse.json(
                 { error: "Test case not found" },
                 { status: 404 }
             );
         }
 
-        if (result[0].ownerId !== user.id) {
+        // Verify repository ownership
+        const repo = await db
+            .select()
+            .from(repositories)
+            .where(
+                eq(
+                    repositories.repoId,
+                    Number(testCase[0].repoId)
+                )
+            )
+            .limit(1);
+
+        if (repo.length === 0) {
+            return NextResponse.json(
+                { error: "Repository not found" },
+                { status: 404 }
+            );
+        }
+
+        if (repo[0].userId !== user.id) {
             return NextResponse.json(
                 { error: "Forbidden" },
                 { status: 403 }
             );
         }
 
+        // Delete only this test case
         await db
             .delete(TestCasesTable)
             .where(eq(TestCasesTable.id, testCaseId));
@@ -72,7 +77,7 @@ export async function DELETE(req: NextRequest) {
             message: "Test case deleted successfully",
         });
     } catch (error) {
-        console.error("DELETE ERROR:", error);
+        console.error(error);
 
         return NextResponse.json(
             { error: "Failed to delete test case" },
