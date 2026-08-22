@@ -294,7 +294,7 @@ Each test case must include:
             await ai.models.generateContent(
                 {
                     model:
-                        "gemini-2.5-flash",
+                        "gemini-flash-latest",
                     contents: prompt,
                     config: {
                         responseMimeType:
