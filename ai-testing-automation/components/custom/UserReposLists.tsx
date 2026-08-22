@@ -121,9 +121,17 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
         user.setCredits(result.data.credits);
       }
 
+      if (Array.isArray(result.data?.testCases) && result.data.testCases.length > 0) {
+        setRepoTestCases((prev) => ({
+          ...prev,
+          [repo.repoId]: result.data.testCases,
+        }));
+      }
+
       await addTestCases(repo.repoId);
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
+      console.error("Test case generation error:", error);
+      alert(error?.response?.data?.error || error?.message || "Failed to generate test cases");
       setTestCaseLoading(false);
     } finally {
       setLoadingRepoId(null);

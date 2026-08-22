@@ -19,21 +19,11 @@ const ALLOWED_EXTENSIONS = [
     ".ts",
     ".tsx",
     ".json",
+    ".html",
+    ".css",
+    ".py",
+    ".go",
     ".md",
-];
-
-const IMPORTANT_FILES = [
-    "package.json",
-    "next.config",
-    "middleware",
-    "app/",
-    "pages/",
-    "components/",
-    "src/",
-    "lib/",
-    "utils/",
-    "actions/",
-    "api/",
 ];
 
 const IGNORE_PATHS = [
@@ -65,13 +55,7 @@ function isUsefulFile(path: string) {
         path.endsWith(ext)
     );
 
-    const isImportantPath = IMPORTANT_FILES.some((item) =>
-        path.includes(item)
-    );
-
-    return !isIgnored &&
-        isAllowedExtension &&
-        isImportantPath;
+    return !isIgnored && isAllowedExtension;
 }
 
 async function getRepoTree({
@@ -85,8 +69,9 @@ async function getRepoTree({
     branch: string;
     githubToken: string;
 }) {
-    const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+    let targetBranch = branch || "main";
+    let res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`,
         {
             headers: {
                 Authorization: `Bearer ${githubToken}`,
@@ -95,13 +80,30 @@ async function getRepoTree({
         }
     );
 
+    if (!res.ok && targetBranch === "main") {
+        targetBranch = "master";
+        res = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`,
+            {
+                headers: {
+                    Authorization: `Bearer ${githubToken}`,
+                    Accept: "application/vnd.github+json",
+                },
+            }
+        );
+    }
+
     if (!res.ok) {
         throw new Error(
-            "Failed to fetch GitHub repo tree"
+            `Failed to fetch GitHub repo tree for ${owner}/${repo} (branch: ${branch})`
         );
     }
 
     const data = await res.json();
+
+    if (!Array.isArray(data.tree)) {
+        return [];
+    }
 
     return data.tree
         .filter(
@@ -110,7 +112,7 @@ async function getRepoTree({
         .filter((item: any) =>
             isUsefulFile(item.path)
         )
-        .slice(0, 25);
+        .slice(0, 30);
 }
 
 async function readGithubFile({
@@ -292,7 +294,7 @@ Each test case must include:
             await ai.models.generateContent(
                 {
                     model:
-                        "gemini-3.1-flash-lite",
+                        "gemini-2.5-flash",
                     contents: prompt,
                     config: {
                         responseMimeType:
@@ -401,9 +403,12 @@ Each test case must include:
                 }
             );
 
+        let rawResponseText = response.text || "{}";
+        rawResponseText = rawResponseText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "").trim();
+
         const aiResult =
             JSON.parse(
-                response.text || "{}"
+                rawResponseText || "{}"
             );
 
         const testCases =
