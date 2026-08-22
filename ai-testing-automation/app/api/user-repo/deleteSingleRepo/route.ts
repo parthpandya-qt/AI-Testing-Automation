@@ -16,13 +16,12 @@ export async function DELETE(req: NextRequest) {
         }
 
         const { searchParams } = new URL(req.url);
-        const testCaseId = Number(searchParams.get("repoId"));
+        const testCaseParam = searchParams.get("testCaseId") || searchParams.get("repoId");
+        const testCaseId = Number(testCaseParam);
 
-        console.log("Deleting test case:", testCaseId);
-
-        if (!testCaseId) {
+        if (!testCaseId || isNaN(testCaseId)) {
             return NextResponse.json(
-                { error: "Test case ID is required" },
+                { error: "Valid test case ID is required" },
                 { status: 400 }
             );
         }
@@ -41,7 +40,18 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
-        // Verify repository ownership
+        // Verify repository ownership or user ownership
+        if (testCase[0].userId === String(user.id)) {
+            await db
+                .delete(TestCasesTable)
+                .where(eq(TestCasesTable.id, testCaseId));
+
+            return NextResponse.json({
+                success: true,
+                message: "Test case deleted successfully",
+            });
+        }
+
         const repo = await db
             .select()
             .from(repositories)
@@ -53,16 +63,9 @@ export async function DELETE(req: NextRequest) {
             )
             .limit(1);
 
-        if (repo.length === 0) {
+        if (repo.length === 0 || repo[0].userId !== user.id) {
             return NextResponse.json(
-                { error: "Repository not found" },
-                { status: 404 }
-            );
-        }
-
-        if (repo[0].userId !== user.id) {
-            return NextResponse.json(
-                { error: "Forbidden" },
+                { error: "Forbidden: You do not own this test case" },
                 { status: 403 }
             );
         }
@@ -76,11 +79,11 @@ export async function DELETE(req: NextRequest) {
             success: true,
             message: "Test case deleted successfully",
         });
-    } catch (error) {
-        console.error(error);
+    } catch (error: any) {
+        console.error("Delete single test case error:", error);
 
         return NextResponse.json(
-            { error: "Failed to delete test case" },
+            { error: error?.message || "Failed to delete test case" },
             { status: 500 }
         );
     }

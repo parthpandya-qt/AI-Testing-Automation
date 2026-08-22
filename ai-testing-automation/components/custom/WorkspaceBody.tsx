@@ -84,8 +84,7 @@ function WorkspaceBody() {
   };
 
   const getUserRepoList = async ()=>{
-      const result = await axios.get("./api/user-repo?userId=" + userDetails?.id)
-      
+      const result = await axios.get("/api/user-repo?userId=" + userDetails?.id)
       
       setUserRepos(result.data);
   }

@@ -33,7 +33,18 @@ export async function GET(req: NextRequest) {
       }
     );
 
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: "Failed to fetch repositories from GitHub. Please re-authenticate." },
+        { status: res.status }
+      );
+    }
+
     const repos = await res.json();
+
+    if (!Array.isArray(repos)) {
+      break;
+    }
 
     allRepo.push(...repos);
 
