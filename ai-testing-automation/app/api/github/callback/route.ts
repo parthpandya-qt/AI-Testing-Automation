@@ -47,15 +47,21 @@ export async function GET(req: NextRequest) {
   );
 
   const user = await getAuthenticatedUser();
-  const cookieName = user ? `github_token_${user.id}` : "github_token";
-
-  response.cookies.set(cookieName, token, {
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
-    sameSite: "lax",
-  });
+    sameSite: "lax" as const,
+  };
+
+  // Set universal fallback cookie
+  response.cookies.set("github_token", token, cookieOptions);
+
+  // Set user-scoped cookie if authenticated user exists
+  if (user) {
+    response.cookies.set(`github_token_${user.id}`, token, cookieOptions);
+  }
 
   return response;
 }

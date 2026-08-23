@@ -126,6 +126,17 @@ export async function POST(req: NextRequest) {
       if (targetFiles.length > 0) {
         const fileContents = await Promise.all(
           targetFiles.map(async (filePath) => {
+            if (githubToken) {
+              const ghFile = await readGithubFile({
+                owner: testCase.repoOwner,
+                repo: testCase.repoName,
+                branch: testCase.branch || "main",
+                path: filePath,
+                githubToken,
+              });
+              if (ghFile) return ghFile;
+            }
+
             try {
               const fs = await import("fs");
               const path = await import("path");
@@ -141,15 +152,6 @@ export async function POST(req: NextRequest) {
               // Ignore and fallback
             }
 
-            if (githubToken) {
-              return readGithubFile({
-                owner: testCase.repoOwner,
-                repo: testCase.repoName,
-                branch: testCase.branch || "main",
-                path: filePath,
-                githubToken,
-              });
-            }
             return null;
           })
         );
@@ -197,18 +199,15 @@ ${tempIns}
 Source File Context for Reference (Read this to extract exact tags, component text, input fields, and class names):
 ${repoContext || "No source file context available for this test case."}
 Write only the JavaScript code that executes within an async function context.
-The following variables are pre-injected into your runtime environment:
+The following variables are pre-injected into your runtime environment scope:
 'page': The Playwright Page object.
 'console': The custom console object to output log messages.
+'assert': Pre-injected helper function assert(condition, message) that throws an Error if condition is false. DO NOT redeclare 'function assert' or 'const assert' in your code.
+'testCase': Object containing current test case details.
 IMPORTANT:
-Do NOT assume Node.js 'assert' is available.
-Do NOT import assert or any other module.
-At the top of the generated script, always define this custom assert helper:
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message || 'Assertion failed');
-  }
-}
+Do NOT import assert, playwright, browserbase, or any other modules.
+DO NOT declare 'function assert' or 'const assert' anywhere in your code—use the pre-injected assert(condition, message) function directly.
+
 Rules for your code:
 DO NOT import playwright, browserbase, assert, or any other modules.
 
@@ -305,16 +304,38 @@ Just return the executable code.
     let isLocal = false;
 
     try {
-      if (resolvedBaseUrl.includes("localhost") || resolvedBaseUrl.includes("127.0.0.1")) {
+      const isLocalhost = resolvedBaseUrl.includes("localhost") || resolvedBaseUrl.includes("127.0.0.1");
+
+      if (isLocalhost) {
         try {
           logs.push(`[SYSTEM] Target URL is localhost. Attempting local Chromium execution...`);
           browser = await chromium.launch({ headless: true });
           isLocal = true;
           logs.push(`[SYSTEM] Local Chromium launched successfully.`);
         } catch (localErr: any) {
-          logs.push(`[SYSTEM WARNING] Local Chromium launch failed: ${localErr.message || String(localErr)}`);
-          logs.push(`[SYSTEM WARNING] 1. Run "npx playwright install chromium" locally.`);
-          logs.push(`[SYSTEM WARNING] 2. Or expose via ngrok and change your Target Website URL.`);
+          logs.push(`[SYSTEM ERROR] Local Chromium launch failed: ${localErr.message || String(localErr)}`);
+          logs.push(`[SYSTEM ERROR] Remote Browserbase cloud browsers cannot access 'localhost' on your machine.`);
+          logs.push(`[SYSTEM HINT] 1. Run "npx playwright install chromium" in your local terminal.`);
+          logs.push(`[SYSTEM HINT] 2. Or set your Target Website URL to an ngrok tunnel or public deployment URL (e.g. https://your-app.vercel.app).`);
+          
+          await db
+            .update(TestCasesTable)
+            .set({
+              status: "failed",
+              browserbaseScript: scriptText,
+              logs: logs,
+              sessionId: null,
+              sessionUrl: null,
+            })
+            .where(eq(TestCasesTable.id, testCase.id));
+
+          return NextResponse.json({
+            success: false,
+            status: "failed",
+            error: "Local Chromium launch failed. Install Chromium locally (npx playwright install chromium) or use a public target URL.",
+            logs,
+            browserbaseScript: scriptText,
+          });
         }
       }
 
