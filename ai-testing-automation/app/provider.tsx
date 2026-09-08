@@ -62,23 +62,21 @@ function Provider({
 
       setHasFetched(true);
 
+      const email = user?.primaryEmailAddress?.emailAddress;
+      const name = user?.fullName || user?.firstName || "User";
+
       try {
-        const result =
-          await axios.post(
-            "/api/users",
-            {}
-          );
+        const result = await axios.post("/api/users", {
+          email,
+          name,
+        });
 
-        setUserdetails(
-          result.data
-        );
+        setUserdetails(result.data);
 
-        if (
-          result.data?.id
-        ) {
-          getCredits(
-            result.data.id
-          );
+        if (result.data?.credits !== undefined) {
+          setCredits(result.data.credits);
+        } else if (result.data?.id) {
+          getCredits(result.data.id);
         }
       } catch (error) {
         console.log(error);
@@ -86,18 +84,12 @@ function Provider({
         const fallbackUser = {
           id: 10,
           name: "Parth (Local Fallback)",
-          email:
-            "parth.pandya1307@gmail.com",
+          email: "parth.pandya1307@gmail.com",
           credits: 1000,
         };
 
-        setUserdetails(
-          fallbackUser
-        );
-
-        getCredits(
-          fallbackUser.id
-        );
+        setUserdetails(fallbackUser);
+        setCredits(fallbackUser.credits);
       }
     };
 
