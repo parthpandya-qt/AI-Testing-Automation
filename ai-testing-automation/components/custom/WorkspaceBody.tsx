@@ -95,10 +95,10 @@ function WorkspaceBody() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Workspace
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage your repositories and projects
           </p>
         </div>
@@ -113,25 +113,26 @@ function WorkspaceBody() {
       </div>
 
       {/* GitHub Connect Card */}
-      <Card className="p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300">
+      <Card className="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60 shadow-xs hover:shadow-md transition-all duration-300">
         <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
           
           {/* Left Section */}
           <div className="flex items-start sm:items-center gap-4">
-            <div className="bg-gray-100 p-3 rounded-xl shrink-0">
+            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-xl shrink-0">
               <Image
                 src="/github1.svg"
                 alt="GitHub Logo"
                 width={40}
                 height={40}
+                className="dark:invert"
               />
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Connect GitHub
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Add your repositories and test your code with AI-powered automation
               </p>
             </div>
@@ -144,7 +145,9 @@ function WorkspaceBody() {
                 onClick={onAddRepo}
                 className="
                   bg-black
+                  dark:bg-white
                   text-white
+                  dark:text-black
                   px-5
                   py-2.5
                   rounded-xl
@@ -181,8 +184,8 @@ function WorkspaceBody() {
           
         </div>
       </Card>
-      <Card>
-        <CardContent>
+      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60">
+        <CardContent className="p-6">
             {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} setReload={setRefreshPage} />}
         </CardContent>
         

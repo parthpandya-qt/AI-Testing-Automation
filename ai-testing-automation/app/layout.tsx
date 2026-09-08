@@ -2,7 +2,13 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import Provider from "./provider";
-import Footer from "@/components/custom/Footer";
+import { ThemeProvider } from "@/components/custom/ThemeProvider";
+import { Inter } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "TestAI — AI-Powered Testing Automation",
@@ -16,13 +22,18 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body style={{ margin: 0, padding: 0 }}>
-          <Provider>{children}</Provider>
+      <html lang="en" suppressHydrationWarning className={inter.className}>
+        <body className={inter.className} style={{ margin: 0, padding: 0 }}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange={false}
+          >
+            <Provider>{children}</Provider>
+          </ThemeProvider>
         </body>
-        
       </html>
     </ClerkProvider>
-    
   );
 }

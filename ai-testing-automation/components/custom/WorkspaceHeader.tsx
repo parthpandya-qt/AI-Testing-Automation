@@ -6,6 +6,7 @@ import { UserButton } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import ThemeToggle from "@/components/custom/ThemeToggle";
 
 function WorkspaceHeader() {
   const pathname = usePathname();
@@ -19,7 +20,7 @@ function WorkspaceHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-xs transition-colors duration-300">
       <div className="flex items-center justify-between px-4 sm:px-8 py-4">
         {/* Logo */}
         <Link href="/workspace" className="flex items-center gap-2">
@@ -32,10 +33,10 @@ function WorkspaceHeader() {
           />
 
           <div>
-            <h1 className="text-xl font-bold text-gray-800">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
               Automate-Testing.io
             </h1>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Smart collaboration
             </p>
           </div>
@@ -49,10 +50,10 @@ function WorkspaceHeader() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className={`transition-all duration-200 hover:text-blue-600 hover:scale-105 ${
+                    className={`transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105 ${
                       pathname === link.href
-                        ? "text-blue-600 font-semibold"
-                        : "text-gray-600"
+                        ? "text-blue-600 dark:text-blue-400 font-semibold"
+                        : "text-slate-600 dark:text-slate-300"
                     }`}
                   >
                     {link.name}
@@ -65,12 +66,13 @@ function WorkspaceHeader() {
 
         {/* Actions */}
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <UserButton />
           
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-gray-600 hover:text-blue-600 focus:outline-none transition-colors cursor-pointer"
+            className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none transition-colors cursor-pointer"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
@@ -84,17 +86,17 @@ function WorkspaceHeader() {
 
       {/* Mobile Navigation Dropdown */}
       {isMobileMenuOpen && (
-        <nav className="md:hidden border-t bg-white px-6 py-4 shadow-inner animate-in slide-in-from-top-4 duration-200">
+        <nav className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 shadow-inner animate-in slide-in-from-top-4 duration-200">
           <ul className="flex flex-col gap-4 text-sm font-medium">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block py-2 transition-all duration-200 hover:text-blue-600 ${
+                  className={`block py-2 transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 ${
                     pathname === link.href
-                      ? "text-blue-600 font-semibold"
-                      : "text-gray-600"
+                      ? "text-blue-600 dark:text-blue-400 font-semibold"
+                      : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
                   {link.name}

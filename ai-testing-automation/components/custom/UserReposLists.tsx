@@ -208,7 +208,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
           <AccordionItem
             key={index}
             value={repo.repoId.toString()}
-            className="border rounded-md mb-2"
+            className="border border-gray-200 dark:border-gray-800 rounded-lg mb-2 bg-white dark:bg-gray-900/50 shadow-xs"
           >
             <AccordionTrigger className="w-full">
               <div className="flex items-center justify-between w-full min-w-0 pr-4">
@@ -219,13 +219,13 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                     alt="GitHub"
                     width={20}
                     height={20}
-                    className="shrink-0"
+                    className="shrink-0 dark:invert"
                   />
 
                   <div className="flex flex-col items-start min-w-0 text-left">
-                    <span className="font-semibold text-gray-800 break-all">{repo.name}</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-100 break-all">{repo.name}</span>
 
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                       Branch:{" "}
                       {repo.defaultBranch || "Unknown"}
                     </p>
@@ -265,19 +265,19 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                   <div className="flex items-center gap-2 max-w-full overflow-hidden">
                     <Link2Icon className="h-5 w-5 text-primary shrink-0" />
 
-                    <div className="bg-gray-100 rounded-md px-2.5 py-1.5 flex items-center gap-2 overflow-hidden max-w-full">
-                      <span className="shrink-0 text-xs sm:text-sm text-gray-600">Target Domain:</span>
+                    <div className="bg-gray-100 dark:bg-gray-800/80 rounded-md px-2.5 py-1.5 flex items-center gap-2 overflow-hidden max-w-full">
+                      <span className="shrink-0 text-xs sm:text-sm text-gray-600 dark:text-gray-300">Target Domain:</span>
 
-                      <span className="bg-white border rounded-md px-2 py-1 text-primary font-medium truncate text-xs sm:text-sm">
+                      <span className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-primary dark:text-blue-400 font-medium truncate text-xs sm:text-sm">
                         {repo.targetDomain || "None configured"}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 self-end sm:self-auto mr-0 sm:mr-5 shrink-0">
                     {/* Tech Stack Selector Button placed BEFORE Project Config */}
-                    <div className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-md px-2.5 py-1">
-                      <Code className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-xs font-semibold text-gray-500 hidden sm:inline">Stack:</span>
+                    <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1">
+                      <Code className="h-4 w-4 text-primary dark:text-blue-400 shrink-0" />
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:inline">Stack:</span>
                       <select
                         value={repo.techStack || "nextjs"}
                         onChange={async (e) => {
@@ -292,7 +292,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                             console.error("Failed to update tech stack:", err);
                           }
                         }}
-                        className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-semibold text-gray-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                        className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
                       >
                         <option value="nextjs">⚡ Next.js / React</option>
                         <option value="mern">🟢 MERN Stack (Mongo/Express/React)</option>
@@ -389,14 +389,14 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                   (repoTestCases[
                     repo.repoId
                   ]?.length || 0) === 0 && (
-                    <div className="flex flex-col sm:flex-row justify-between gap-4 border rounded-xl p-4 bg-gray-50">
+                    <div className="flex flex-col sm:flex-row justify-between gap-4 border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-gray-50 dark:bg-gray-800/40">
 
                       <div>
-                        <h3 className="font-medium">
+                        <h3 className="font-medium text-gray-900 dark:text-gray-100">
                           Generate AI Test Cases
                         </h3>
 
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                           Analyze repository and
                           generate automated test
                           cases.
@@ -452,20 +452,20 @@ function StatusCard({
   bgColor: string;
 }) {
   return (
-    <div className="border rounded-xl p-4 flex items-center justify-between bg-white">
+    <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex items-center justify-between bg-white dark:bg-gray-900/70 shadow-xs">
 
       <div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {title}
         </p>
 
-        <h3 className="text-2xl font-semibold mt-1">
+        <h3 className="text-2xl font-semibold mt-1 text-gray-900 dark:text-gray-100">
           {value}
         </h3>
       </div>
 
       <div
-        className={`h-10 w-10 rounded-full flex items-center justify-center ${bgColor}`}
+        className={`h-10 w-10 rounded-full flex items-center justify-center ${bgColor} dark:bg-opacity-20`}
       >
         {icon}
       </div>

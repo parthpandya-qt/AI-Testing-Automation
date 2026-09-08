@@ -69,7 +69,7 @@ return (
         {testCases.map((testCase) => (
           <div
             key={testCase.id}
-            className="flex flex-col sm:flex-row justify-between rounded-xl p-4 mt-4 bg-gray-50 gap-4 border border-gray-200"
+            className="flex flex-col sm:flex-row justify-between rounded-xl p-4 mt-4 bg-gray-50 dark:bg-gray-800/40 gap-4 border border-gray-200 dark:border-gray-800 shadow-xs"
           >
             
 
@@ -80,11 +80,11 @@ return (
                 className="mt-1 shrink-0"
               />
               <div className="min-w-0">
-                <h2 className="font-medium text-base text-gray-800 break-words">
+                <h2 className="font-medium text-base text-gray-800 dark:text-gray-100 break-words">
                   {testCase.title}
                 </h2>
 
-                <p className="text-sm text-gray-500 mt-1 break-words">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">
                   {testCase.description}
                 </p>
               </div>
