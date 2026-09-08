@@ -29,7 +29,7 @@ export type UserRepo = {
   userId: number;
   targetDomain?: string;
   globalInstruction?: string;
- 
+  techStack?: string;
 };
 
 

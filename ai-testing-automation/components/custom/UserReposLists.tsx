@@ -17,6 +17,7 @@ import {
   Loader2,
   Link2Icon,
   Settings2,
+  Code,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ type UserRepo = {
   userId: number;
   targetDomain?: string;
   globalInstruction?: string;
+  techStack?: string;
 };
 
 type Props = {
@@ -271,7 +273,38 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                       </span>
                     </div>
                   </div>
-                  <div className="self-end sm:self-auto mr-0 sm:mr-5 shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-auto mr-0 sm:mr-5 shrink-0">
+                    {/* Tech Stack Selector Button placed BEFORE Project Config */}
+                    <div className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-md px-2.5 py-1">
+                      <Code className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs font-semibold text-gray-500 hidden sm:inline">Stack:</span>
+                      <select
+                        value={repo.techStack || "nextjs"}
+                        onChange={async (e) => {
+                          const newStack = e.target.value;
+                          try {
+                            await axios.post("/api/user-repo/settings", {
+                              repoId: repo.repoId,
+                              techStack: newStack,
+                            });
+                            setReload((prev) => !prev);
+                          } catch (err) {
+                            console.error("Failed to update tech stack:", err);
+                          }
+                        }}
+                        className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-semibold text-gray-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                      >
+                        <option value="nextjs">⚡ Next.js / React</option>
+                        <option value="mern">🟢 MERN Stack (Mongo/Express/React)</option>
+                        <option value="java">☕ Java / Spring Boot</option>
+                        <option value="python">🐍 Python (Flask/Django)</option>
+                        <option value="go">🐹 Go (Golang)</option>
+                        <option value="csharp">🔷 C# / .NET</option>
+                        <option value="php">🐘 PHP / Laravel</option>
+                        <option value="other">🌐 Other Web App</option>
+                      </select>
+                    </div>
+
                     <RepoSettings repo={repo} setReload={setReload} />
                   </div>
                 </div>

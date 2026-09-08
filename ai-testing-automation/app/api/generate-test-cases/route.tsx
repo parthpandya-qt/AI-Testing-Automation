@@ -1,543 +1,115 @@
-//This API route analyzes a GitHub repository → sends repo code to Gemini → generates test cases → stores them in DB (Drizzle/Postgres).
-
-
-
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "@/db";
-import { TestCasesTable, users, repositories } from "@/db/schema";
+import { repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { generateStackTestCases } from "@/lib/generateStackTestCases";
 
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY!,
-});
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-const ALLOWED_EXTENSIONS = [
-    ".js",
-    ".jsx",
-    ".ts",
-    ".tsx",
-    ".json",
-    ".html",
-    ".css",
-    ".py",
-    ".go",
-    ".md",
-];
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-const IGNORE_PATHS = [
-    "node_modules",
-    ".next",
-    "build",
-    "dist",
-    ".git",
-    "coverage",
-    "public",
-    "package-lock.json",
-    "yarn.lock",
-    "pnpm-lock.yaml",
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".svg",
-    ".webp",
-    ".mp4",
-    ".mov",
-];
+    const bodyText = await req.text();
+    const body = JSON.parse(bodyText || "{}");
+    const { repoId, techStack: bodyStack } = body;
 
-function isUsefulFile(path: string) {
-    const isIgnored = IGNORE_PATHS.some((item) =>
-        path.includes(item)
+    let activeTechStack = bodyStack || "nextjs";
+
+    if (repoId) {
+      const [repo] = await db
+        .select()
+        .from(repositories)
+        .where(and(eq(repositories.repoId, Number(repoId)), eq(repositories.userId, user.id)))
+        .limit(1);
+
+      if (repo && repo.techStack) {
+        activeTechStack = repo.techStack;
+      }
+    }
+
+    // Forward request to tech stack specific runner
+    const clonedReq = new NextRequest(req.url, {
+      method: "POST",
+      headers: req.headers,
+      body: bodyText,
+    });
+
+    switch (activeTechStack.toLowerCase()) {
+      case "java":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "java",
+          allowedExtensions: [".java", ".jsp", ".kt", ".xml", ".gradle", ".properties", ".yaml", ".yml", ".html"],
+          customIgnorePaths: ["target", ".gradle", "gradle", ".idea", "bin", "out"],
+          stackPrompt: "JAVA & SPRING BOOT: Analyze Controllers (@RestController, @GetMapping, @PostMapping), DTOs, and JSP/Thymeleaf views.",
+        });
+
+      case "python":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "python",
+          allowedExtensions: [".py", ".html", ".json", ".yaml", ".yml"],
+          customIgnorePaths: ["__pycache__", "venv", ".venv", ".pytest_cache"],
+          stackPrompt: "PYTHON: Analyze Django urls.py/views.py, Flask @app.route, or FastAPI routes.",
+        });
+
+      case "go":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "go",
+          allowedExtensions: [".go", ".html", ".json"],
+          customIgnorePaths: ["vendor", "bin"],
+          stackPrompt: "GO (GOLANG): Analyze Gin/Fiber/Chi handlers and Go html/template structures.",
+        });
+
+      case "csharp":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "csharp",
+          allowedExtensions: [".cs", ".cshtml", ".json", ".csproj"],
+          customIgnorePaths: ["bin", "obj", ".vs"],
+          stackPrompt: "C# & ASP.NET CORE: Analyze Controllers ([ApiController], [HttpGet], [HttpPost]) and Razor Pages.",
+        });
+
+      case "php":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "php",
+          allowedExtensions: [".php", ".html", ".css", ".json"],
+          customIgnorePaths: ["vendor", "storage", "bootstrap/cache"],
+          stackPrompt: "PHP: Analyze Laravel routes (routes/web.php, routes/api.php), Controllers, and Blade views.",
+        });
+
+      case "mern":
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "mern",
+          allowedExtensions: [".js", ".jsx", ".ts", ".tsx", ".json", ".html", ".css"],
+          customIgnorePaths: ["node_modules", "build", "dist", ".next", "coverage"],
+          stackPrompt: "MERN STACK: Analyze Express backend routes, Mongoose models, and React frontend components.",
+        });
+
+      case "nextjs":
+      default:
+        return generateStackTestCases({
+          req: clonedReq,
+          techStack: "nextjs",
+          allowedExtensions: [".tsx", ".ts", ".jsx", ".js", ".json", ".css", ".html"],
+          customIgnorePaths: [".next", "build", "dist", "out"],
+          stackPrompt: "NEXT.JS & REACT: Analyze App Router (app/), Pages Router (pages/), and Next API routes.",
+        });
+    }
+  } catch (error: any) {
+    console.error("Generate test cases dispatcher error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to dispatch test case generation" },
+      { status: 500 }
     );
-
-    const isAllowedExtension = ALLOWED_EXTENSIONS.some((ext) =>
-        path.endsWith(ext)
-    );
-
-    return !isIgnored && isAllowedExtension;
-}
-
-async function getRepoTree({
-    owner,
-    repo,
-    branch,
-    githubToken,
-}: {
-    owner: string;
-    repo: string;
-    branch: string;
-    githubToken: string;
-}) {
-    let targetBranch = branch || "main";
-    let res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`,
-        {
-            headers: {
-                Authorization: `Bearer ${githubToken}`,
-                Accept: "application/vnd.github+json",
-            },
-        }
-    );
-
-    if (!res.ok && targetBranch === "main") {
-        targetBranch = "master";
-        res = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`,
-            {
-                headers: {
-                    Authorization: `Bearer ${githubToken}`,
-                    Accept: "application/vnd.github+json",
-                },
-            }
-        );
-    }
-
-    if (!res.ok) {
-        throw new Error(
-            `Failed to fetch GitHub repo tree for ${owner}/${repo} (branch: ${branch})`
-        );
-    }
-
-    const data = await res.json();
-
-    if (!Array.isArray(data.tree)) {
-        return [];
-    }
-
-    return data.tree
-        .filter(
-            (item: any) => item.type === "blob"
-        )
-        .filter((item: any) =>
-            isUsefulFile(item.path)
-        )
-        .slice(0, 30);
-}
-
-async function readGithubFile({
-    owner,
-    repo,
-    path,
-    branch,
-    githubToken,
-}: {
-    owner: string;
-    repo: string;
-    path: string;
-    branch: string;
-    githubToken: string;
-}) {
-    const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
-        {
-            headers: {
-                Authorization: `Bearer ${githubToken}`,
-                Accept: "application/vnd.github+json",
-            },
-        }
-    );
-
-    if (!res.ok) {
-        return null;
-    }
-
-    const data = await res.json();
-
-    if (!data.content) {
-        return null;
-    }
-
-    const decodedContent =
-        Buffer.from(
-            data.content,
-            "base64"
-        ).toString("utf-8");
-
-    return {
-        path,
-        content:
-            decodedContent.slice(0, 5000),
-    };
-}
-
-export async function POST(
-    req: NextRequest
-) {
-    try {
-        const user = await getAuthenticatedUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        if (user.credits <= 0) {
-            return NextResponse.json(
-                {
-                    error: "Insufficient credits. Please purchase more credits to generate test cases.",
-                },
-                { status: 403 }
-            );
-        }
-
-        const body = await req.json();
-        const githubToken = req.cookies.get(`github_token_${user.id}`)?.value || req.cookies.get("github_token")?.value;
-
-        const {
-            repoId,
-            owner,
-            repo,
-            branch = "main",
-        } = body;
-
-        if (
-            !repoId ||
-            !owner ||
-            !repo ||
-            !githubToken
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        "repoId, owner, repo and githubToken are required",
-                },
-                { status: 400 }
-            );
-        }
-
-        // Verify repository ownership
-        const repoCheck = await db.select().from(repositories)
-            .where(and(eq(repositories.repoId, Number(repoId)), eq(repositories.userId, user.id)))
-            .limit(1);
-        if (repoCheck.length === 0) {
-            return NextResponse.json({ error: "Forbidden: You do not own this repository" }, { status: 403 });
-        }
-
-        const userIdStr = String(user.id);
-
-        const repoFiles =
-            await getRepoTree({
-                owner,
-                repo,
-                branch,
-                githubToken,
-            });
-
-        const fileContents =
-            await Promise.all(
-                repoFiles.map(
-                    (file: any) =>
-                        readGithubFile({
-                            owner,
-                            repo,
-                            branch,
-                            path: file.path,
-                            githubToken,
-                        })
-                )
-            );
-
-        const validFiles =
-            fileContents.filter(Boolean);
-
-        if (
-            validFiles.length === 0
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        "No useful source files found in this repository",
-                },
-                { status: 400 }
-            );
-        }
-
-        const repoContext =
-            validFiles
-                .map(
-                    (file: any) => `
-File Path: ${file.path}
-
-File Content:
-${file.content}
-`
-                )
-                .join(
-                    "\n\n--------------------\n\n"
-                );
-
-        const prompt = `
-You are an expert QA automation engineer.
-
-Analyze the GitHub repository source code and generate useful small test cases.
-
-Repository:
-Owner: ${owner}
-Repo: ${repo}
-Branch: ${branch}
-
-Repository File Context:
-${repoContext}
-
-Generate 5 to 10 test cases.
-
-Each test case must include:
-- title
-- description
-- type
-- priority
-- targetRoute
-- targetFiles
-- expectedResult
-`;
-
-        const response =
-            await ai.models.generateContent(
-                {
-                    model:
-                        "gemini-flash-latest",
-                    contents: prompt,
-                    config: {
-                        responseMimeType:
-                            "application/json",
-
-                        responseSchema: {
-                            type:
-                                Type.OBJECT,
-
-                            properties: {
-                                testCases:
-                                    {
-                                        type:
-                                            Type.ARRAY,
-
-                                        items:
-                                            {
-                                                type:
-                                                    Type.OBJECT,
-
-                                                properties:
-                                                    {
-                                                        title:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-                                                            },
-
-                                                        description:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-                                                            },
-
-                                                        type:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-
-                                                                enum: [
-                                                                    "ui",
-                                                                    "auth",
-                                                                    "api",
-                                                                    "form",
-                                                                    "integration",
-                                                                    "edge-case",
-                                                                ],
-                                                            },
-
-                                                        priority:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-
-                                                                enum: [
-                                                                    "low",
-                                                                    "medium",
-                                                                    "high",
-                                                                ],
-                                                            },
-
-                                                        targetRoute:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-                                                            },
-
-                                                        targetFiles:
-                                                            {
-                                                                type:
-                                                                    Type.ARRAY,
-
-                                                                items:
-                                                                    {
-                                                                        type:
-                                                                            Type.STRING,
-                                                                    },
-                                                            },
-
-                                                        expectedResult:
-                                                            {
-                                                                type:
-                                                                    Type.STRING,
-                                                            },
-                                                    },
-
-                                                required:
-                                                    [
-                                                        "title",
-                                                        "description",
-                                                        "type",
-                                                        "priority",
-                                                        "targetRoute",
-                                                        "targetFiles",
-                                                        "expectedResult",
-                                                    ],
-                                            },
-                                    },
-                            },
-
-                            required: [
-                                "testCases",
-                            ],
-                        },
-                    },
-                }
-            );
-
-        let rawResponseText = response.text || "{}";
-        rawResponseText = rawResponseText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "").trim();
-
-        const aiResult =
-            JSON.parse(
-                rawResponseText || "{}"
-            );
-
-        const testCases =
-            aiResult.testCases || [];
-
-        if (
-            !testCases.length
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        "Gemini did not generate any test cases",
-                },
-                { status: 400 }
-            );
-        }
-
-        const insertedTestCases =
-            await db
-                .insert(
-                    TestCasesTable
-                )
-                .values(
-                    testCases.map(
-                        (
-                            testCase: any
-                        ) => ({
-                            userId: userIdStr,
-                            repoId,
-
-                            repoName:
-                                repo,
-
-                            repoOwner:
-                                owner,
-
-                            branch,
-
-                            title:
-                                testCase.title,
-
-                            description:
-                                testCase.description,
-
-                            type:
-                                testCase.type,
-
-                            priority:
-                                testCase.priority,
-
-                            targetRoute:
-                                testCase.targetRoute,
-
-                            targetFiles:
-                                testCase.targetFiles ||
-                                [],
-
-                            expectedResult:
-                                testCase.expectedResult,
-
-                            status:
-                                "generated",
-                        })
-                    )
-                )
-                .returning();
-        const generatedCount =
-  insertedTestCases.length;
-
-const creditCost =
-  generatedCount * 10;
-
-const existingUser =
-  await db.query.users.findFirst({
-    where: eq(
-      users.id,
-      user.id
-    ),
-  });
-let newCredits = 0;
-if (existingUser) {
-  newCredits = Math.max(
-    0,
-    existingUser.credits - creditCost
-  );
-
-  await db
-    .update(users)
-    .set({
-      credits: newCredits,
-    })
-    .where(
-      eq(
-        users.id,
-        user.id
-      )
-    );
-}
-
-        return NextResponse.json(
-            {
-                success: true,
-
-                message:
-                    "Test cases generated successfully",
-
-                count:
-                    insertedTestCases.length,
-
-                testCases:
-                    insertedTestCases,
-                credits: newCredits
-            }
-        );
-    } catch (error: any) {
-        console.error(
-            "Generate test cases error:",
-            error
-        );
-
-        return NextResponse.json(
-            {
-                success: false,
-
-                error:
-                    error.message ||
-                    "Failed to generate test cases",
-            },
-            { status: 500 }
-        );
-    }
+  }
 }

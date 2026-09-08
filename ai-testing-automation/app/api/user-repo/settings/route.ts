@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { repoId, targetDomain, globalInstruction } = body;
+    const { repoId, targetDomain, globalInstruction, techStack } = body;
 
     if (!repoId) {
       return NextResponse.json({ error: "repoId is required" }, { status: 400 });
@@ -32,12 +32,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const updatePayload: any = {};
+    if (targetDomain !== undefined) updatePayload.targetDomain = targetDomain;
+    if (globalInstruction !== undefined) updatePayload.globalInstruction = globalInstruction;
+    if (techStack !== undefined) updatePayload.techStack = techStack;
+
     const result = await db
       .update(repositories)
-      .set({
-        targetDomain,
-        globalInstruction,
-      })
+      .set(updatePayload)
       .where(eq(repositories.repoId, Number(repoId)))
       .returning();
 

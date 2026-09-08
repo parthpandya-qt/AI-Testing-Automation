@@ -61,8 +61,20 @@ type RunResult = {
   browserbaseScript?: string;
 };
 
+const TECH_STACKS = [
+  { id: "nextjs", label: "⚡ Next.js / React", port: "http://localhost:3000" },
+  { id: "mern", label: "🟢 MERN Stack (Mongo/Express/React)", port: "http://localhost:5000" },
+  { id: "java", label: "☕ Java / Spring Boot", port: "http://localhost:8080" },
+  { id: "python", label: "🐍 Python (Flask/Django)", port: "http://localhost:8000" },
+  { id: "go", label: "🐹 Go (Golang)", port: "http://localhost:8080" },
+  { id: "csharp", label: "🔷 C# / .NET", port: "http://localhost:5000" },
+  { id: "php", label: "🐘 PHP / Laravel", port: "http://localhost:8000" },
+  { id: "other", label: "🌐 Other Web App", port: "http://localhost:3000" },
+];
+
 export default function TestExecutionModal({ isOpen, onClose, testCases, repository }: Props) {
   const [baseUrl, setBaseUrl] = useState("http://localhost:3000");
+  const [techStack, setTechStack] = useState("nextjs");
   const [currentIdx, setCurrentIdx] = useState(-1);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState<Record<number, RunResult>>({});
@@ -73,6 +85,25 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
   const [customPrompt, setCustomPrompt] = useState("");
   const [showOptions, setShowOptions] = useState(false);
   const [activeTab, setActiveTab] = useState<"queue" | "details">("queue");
+
+  // Handle tech stack change and sync to DB
+  const handleTechStackChange = async (newStack: string) => {
+    setTechStack(newStack);
+    const selectedObj = TECH_STACKS.find((s) => s.id === newStack);
+    if (selectedObj && (!baseUrl || baseUrl === "http://localhost:3000" || baseUrl.includes("localhost"))) {
+      setBaseUrl(selectedObj.port);
+    }
+    if (repository?.repoId) {
+      try {
+        await axios.post("/api/user-repo/settings", {
+          repoId: repository.repoId,
+          techStack: newStack,
+        });
+      } catch (err) {
+        console.error("Failed to save tech stack to DB:", err);
+      }
+    }
+  };
 
   // Initialize states when testCases change or modal opens
   useEffect(() => {
@@ -98,11 +129,14 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
       setIsExecuting(false);
       setCustomPrompt("");
 
+      const initialTechStack = repository?.techStack || (testCases[0] as any)?.techStack || "nextjs";
+      setTechStack(initialTechStack);
+
       // Prefill with repository's saved website URL if available
-      setBaseUrl(repository?.targetDomain || repository?.websiteUrl || "http://localhost:3000");
+      const defaultPort = TECH_STACKS.find((s) => s.id === initialTechStack)?.port || "http://localhost:3000";
+      setBaseUrl(repository?.targetDomain || repository?.websiteUrl || defaultPort);
 
       // Auto-detect if any selected testcase doesn't have a cached script.
-      // If even one doesn't have a script, default to "generate" mode.
       const hasMissingScript = testCases.some(tc => !(tc as any).browserbaseScript);
       setExecutionMode(hasMissingScript ? "generate" : "cache");
     }
@@ -141,11 +175,16 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
 
       try {
         // Call run API with advanced flags
+        const targetMode = executionMode === "cache" 
+          ? "cache" 
+          : (results[tcId]?.browserbaseScript && customPrompt.trim() === "" ? "cache" : "generate");
+
         const res = await axios.post("/api/test-cases/run", {
           testCaseId: tcId,
           baseUrl: baseUrl.trim(),
-          mode: executionMode, // "cache" (direct run) or "generate" (regenerate)
+          mode: targetMode,
           customPrompt: customPrompt.trim(),
+          techStack: techStack,
         });
 
         const data = res.data;
@@ -180,7 +219,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
     };
 
     runTest();
-  }, [isExecuting, currentIdx, testCases, baseUrl, executionMode]);
+  }, [isExecuting, currentIdx, testCases, baseUrl, executionMode, techStack]);
 
   const startExecution = () => {
     // Reset all statuses
@@ -225,7 +264,26 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
         {/* Target Configuration Header */}
         <div className="flex flex-col bg-gray-50 p-4 rounded-2xl border border-gray-200/80 gap-3 shrink-0">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 space-y-1.5">
+            {/* Tech Stack Selector */}
+            <div className="w-full sm:w-64 space-y-1.5 shrink-0">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Code className="h-3.5 w-3.5 text-primary" /> Tech Stack
+              </label>
+              <select
+                value={techStack}
+                onChange={(e) => handleTechStackChange(e.target.value)}
+                disabled={isExecuting}
+                className="w-full bg-white border border-gray-300 rounded-md h-10 px-3 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer disabled:opacity-50 shadow-xs"
+              >
+                {TECH_STACKS.map((stack) => (
+                  <option key={stack.id} value={stack.id}>
+                    {stack.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 space-y-1.5 w-full">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5 text-primary" /> Target Website URL
               </label>

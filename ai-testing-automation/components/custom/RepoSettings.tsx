@@ -28,9 +28,17 @@ function RepoSettings({ repo, setReload }:props) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [reposettings, setRepoSettings] = React.useState({
         targetDomain: repo.targetDomain || "",
-        globalInstruction: repo.globalInstruction || ""
+        globalInstruction: repo.globalInstruction || "",
+        techStack: repo.techStack || "nextjs"
     });
 
+    React.useEffect(() => {
+        setRepoSettings({
+            targetDomain: repo.targetDomain || "",
+            globalInstruction: repo.globalInstruction || "",
+            techStack: repo.techStack || "nextjs"
+        });
+    }, [repo]);
 
     const handleSaveSettings = async () => {
         const result = await fetch("/api/user-repo/settings", {
@@ -41,7 +49,8 @@ function RepoSettings({ repo, setReload }:props) {
             body: JSON.stringify({
                 repoId: repo.repoId,
                 targetDomain: reposettings.targetDomain,
-                globalInstruction: reposettings.globalInstruction
+                globalInstruction: reposettings.globalInstruction,
+                techStack: reposettings.techStack
             })
         });
         console.log("Settings saved:", await result.json());
@@ -68,7 +77,27 @@ function RepoSettings({ repo, setReload }:props) {
         Configure your project or repository settings here.
       </DialogDescription>
     </DialogHeader>
-    <div>
+    <div className="space-y-4">
+        <div>
+            <label className="block text-sm font-medium mb-1">Application Tech Stack</label>
+            <select
+                className="w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-grey-200 text-sm bg-white"
+                value={reposettings?.techStack}
+                onChange={(e) => setRepoSettings({...reposettings, techStack: e.target.value})}
+            >
+                <option value="nextjs">⚡ Next.js / React</option>
+                <option value="mern">🟢 MERN Stack (Mongo/Express/React)</option>
+                <option value="java">☕ Java / Spring Boot</option>
+                <option value="python">🐍 Python (Flask/Django)</option>
+                <option value="go">🐹 Go (Golang)</option>
+                <option value="csharp">🔷 C# / .NET</option>
+                <option value="php">🐘 PHP / Laravel</option>
+                <option value="other">🌐 Other Web App</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Select the tech stack used by your application for tailored AI test case generation and execution.
+            </p>
+        </div>
         <div>
             <label className="block text-sm font-medium mb-1">App URL/Default Website</label>
             <input 

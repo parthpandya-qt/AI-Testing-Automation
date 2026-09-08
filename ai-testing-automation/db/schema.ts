@@ -1,6 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, varchar, jsonb, bigint } from "drizzle-orm/pg-core";
-
-
+import { pgTable, serial, text, timestamp, integer, varchar, jsonb, bigint, index } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,22 +15,26 @@ export const users = pgTable("users", {
   .default([]),
 });
 
-export const repositories = pgTable("repositories",{
-  id:serial("id").primaryKey(),
-  userId:integer("user_id").references(()=>users.id).notNull(),
-  repoId:bigint("repo_id", { mode: "number" }).notNull(),
-  name:text("name").notNull(),
-  fullName:text("full_name").notNull(),
-  private:integer("private").notNull(),
-  htmlUrl:text("html_url").notNull(),
-  description:text("description"),
-  updatedAt:timestamp("updated_at"),
-  language:text("language"),
-  owner:text("owner").notNull(),
-  defaultBranch:text("default_branch").notNull(),
-  targetDomain:varchar("target_domain").default('http://localhost:3000/'),
-  globalInstruction:text("global_instruction"),
-})
+export const repositories = pgTable("repositories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  repoId: bigint("repo_id", { mode: "number" }).notNull(),
+  name: text("name").notNull(),
+  fullName: text("full_name").notNull(),
+  private: integer("private").notNull(),
+  htmlUrl: text("html_url").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at"),
+  language: text("language"),
+  owner: text("owner").notNull(),
+  defaultBranch: text("default_branch").notNull(),
+  targetDomain: varchar("target_domain").default('http://localhost:3000/'),
+  techStack: varchar("tech_stack", { length: 100 }).default('nextjs'),
+  globalInstruction: text("global_instruction"),
+}, (table) => [
+  index("repositories_repo_id_idx").on(table.repoId),
+  index("repositories_user_id_idx").on(table.userId),
+]);
 
 export const TestCasesTable = pgTable("test_cases", {
     id: serial("id").primaryKey(),
@@ -43,6 +45,7 @@ export const TestCasesTable = pgTable("test_cases", {
     repoName: varchar("repo_name", { length: 255 }).notNull(),
     repoOwner: varchar("repo_owner", { length: 255 }).notNull(),
     branch: varchar("branch", { length: 100 }).default("main"),
+    techStack: varchar("tech_stack", { length: 100 }).default("nextjs"),
 
     // Main test case data
     title: varchar("title", { length: 500 }).notNull(),
@@ -72,7 +75,10 @@ export const TestCasesTable = pgTable("test_cases", {
 
     createdAt: timestamp("created_at")
         .defaultNow(),
-});
+}, (table) => [
+  index("test_cases_repo_id_idx").on(table.repoId),
+  index("test_cases_user_id_idx").on(table.userId),
+]);
 
 
 

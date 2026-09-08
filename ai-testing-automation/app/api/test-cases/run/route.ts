@@ -8,6 +8,9 @@ import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { getAuthenticatedUser } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "placeholder-key",
 });
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { testCaseId, baseUrl, mode = "generate", customPrompt = "" } = body;
+    const { testCaseId, baseUrl, mode = "generate", customPrompt = "", techStack } = body;
 
     if (!testCaseId || !baseUrl) {
       return NextResponse.json(
@@ -69,8 +72,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Resolve localhost to 127.0.0.1 to prevent IPv6 DNS loopback connection issues
-    let resolvedBaseUrl = baseUrl;
+    // Resolve baseUrl and ensure protocol
+    let resolvedBaseUrl = baseUrl.trim();
+    if (!resolvedBaseUrl.startsWith("http://") && !resolvedBaseUrl.startsWith("https://")) {
+      resolvedBaseUrl = `http://${resolvedBaseUrl}`;
+    }
     if (resolvedBaseUrl.includes("localhost")) {
       resolvedBaseUrl = resolvedBaseUrl.replace("localhost", "127.0.0.1");
     }
@@ -89,7 +95,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden: You do not own this test case" }, { status: 403 });
     }
 
-    // Fetch repository settings for global instructions
+    // Update testCase techStack if provided
+    if (techStack && techStack !== testCase.techStack) {
+      await db.update(TestCasesTable).set({ techStack }).where(eq(TestCasesTable.id, testCase.id));
+    }
+
+    // Fetch repository settings for global instructions & tech stack
     let repoRecord = null;
     if (testCase.repoId) {
       const [r] = await db
@@ -111,6 +122,8 @@ export async function POST(req: NextRequest) {
         );
       repoRecord = r;
     }
+
+    const activeTechStack = techStack || repoRecord?.techStack || testCase.techStack || "nextjs";
 
     let scriptText = testCase.browserbaseScript;
     const forceRegenerate = mode === "generate" || !scriptText;
@@ -158,13 +171,6 @@ export async function POST(req: NextRequest) {
 
         const validFiles = fileContents.filter(Boolean);
 
-        if (validFiles.length === 0 && !githubToken) {
-          return NextResponse.json(
-            { error: "GitHub authentication token is missing or expired. Please connect your GitHub account." },
-            { status: 401 }
-          );
-        }
-
         repoContext = validFiles
           .map(
             (file: any) => `\nFile Path: ${file.path}\nFile Content:\n${file.content}\n`
@@ -194,10 +200,12 @@ Description: ${testCase.description}
 Target Route: ${testCase.targetRoute || "/"}
 Expected Result: ${testCase.expectedResult}
 Test Case Type: ${testCase.type}
+Target App Tech Stack: ${activeTechStack.toUpperCase()}
 ${globalIns}
 ${tempIns}
 Source File Context for Reference (Read this to extract exact tags, component text, input fields, and class names):
 ${repoContext || "No source file context available for this test case."}
+
 Write only the JavaScript code that executes within an async function context.
 The following variables are pre-injected into your runtime environment scope:
 'page': The Playwright Page object.
@@ -213,12 +221,12 @@ DO NOT import playwright, browserbase, assert, or any other modules.
 
 1. Navigation and API endpoints:
    - For UI/Form/Auth tests: Navigate to the target route using:
-     await page.goto(\`${targetUrl}\`, { waitUntil: 'load', timeout: 15000 })
+     await page.goto(\`${targetUrl}\`, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => page.goto(\`${targetUrl}\`, { timeout: 10000 }))
      followed by a short settle wait: \`await page.waitForTimeout(1000)\`
    - For API tests: DO NOT use page.goto() to navigate directly to the target route endpoint if it is an API route (e.g. routes under /api/) because doing a GET request on a POST-only API endpoint will cause a 405 error and fail navigation.
      Instead, perform the API request directly using Playwright's page.request context methods (like page.request.post() or page.request.get()).
      IMPORTANT: When making API requests via page.request, you MUST include the header 'x-test-bypass': 'true' in the request headers options to bypass Clerk authentication and run successfully.
-     If you need to establish a browser/origin context first, navigate to the base website URL \`${cleanBaseUrl}\` first using page.goto() before calling page.request.
+     If you need to establish a browser/origin context first, navigate to the base website URL \`${cleanBaseUrl}\` first using page.goto().
 
 2. State Cleaning (localStorage/Cookies):
    - NEVER call page.evaluate(() => localStorage.clear()) or clear cookies/storage BEFORE calling page.goto(). Doing so on 'about:blank' will throw a SecurityError/DOMException.
@@ -259,8 +267,12 @@ Just return the executable code.
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-3.6-flash",
         contents: prompt,
+        config: {
+          temperature: 0.2,
+          maxOutputTokens: 2500,
+        },
       });
 
       let generatedCode = response.text || "";
@@ -351,26 +363,7 @@ Just return the executable code.
       }
       
       const context = isLocal ? await browser.newContext() : browser.contexts()[0];
-      const baseOrigin = new URL(resolvedBaseUrl).origin;
-
-      await context.route("**/*", async (route: any, request: any) => {
-        try {
-          const url = new URL(request.url());
-          if (
-            url.origin === baseOrigin ||
-            url.hostname.includes("127.0.0.1") ||
-            url.hostname.includes("localhost") ||
-            url.hostname.includes("vercel.app")
-          ) {
-            const headers = { ...request.headers(), "x-test-bypass": "true" };
-            await route.continue({ headers });
-          } else {
-            await route.continue();
-          }
-        } catch {
-          await route.continue().catch(() => {});
-        }
-      });
+      await context.setExtraHTTPHeaders({ "x-test-bypass": "true" });
 
       const page = isLocal ? await context.newPage() : (context.pages()[0] || (await context.newPage()));
 
