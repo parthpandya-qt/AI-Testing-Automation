@@ -78,8 +78,10 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
 
   const [loadingRepoId, setLoadingRepoId] = React.useState<number | null>(null);
 
-  const [testCaseLoading, setTestCaseLoading] =
-    React.useState<boolean>(false);
+  // Per-repo loading state so other repos never block or show spinners
+  const [loadingRepoTests, setLoadingRepoTests] = React.useState<
+    Record<number, boolean>
+  >({});
 
   const [repoTestCases, setRepoTestCases] = React.useState<
     Record<number, TestCasetype[]>
@@ -88,6 +90,70 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
   const [repoStatus, setRepoStatus] = React.useState<
     Record<number, statusType>
   >({});
+
+  // Background Batch Pre-fetch: fetch all test cases across user's repos on mount in 1 fast query!
+  React.useEffect(() => {
+    if (!repoList || repoList.length === 0) return;
+
+    let isMounted = true;
+    const prefetchAllTests = async () => {
+      try {
+        const result = await axios.get("/api/test-cases?repoId=all");
+        if (!isMounted) return;
+        const allTests = (result.data || []) as TestCasetype[];
+
+        const grouped: Record<number, TestCasetype[]> = {};
+        const statuses: Record<number, statusType> = {};
+
+        // Initialize empty containers
+        repoList.forEach((r) => {
+          grouped[r.repoId] = [];
+          statuses[r.repoId] = {
+            totalTests: 0,
+            passedTests: 0,
+            failedTests: 0,
+            passRate: 0,
+          };
+        });
+
+        // Group tests by repository
+        allTests.forEach((t) => {
+          const rId = Number(t.repoId);
+          if (!grouped[rId]) grouped[rId] = [];
+          grouped[rId].push(t);
+        });
+
+        // Calculate pass/fail stats
+        Object.keys(grouped).forEach((key) => {
+          const rId = Number(key);
+          const tests = grouped[rId];
+          const passed = tests.filter((t) => t.status === "passed").length;
+          const failed = tests.filter((t) => t.status === "failed").length;
+          const passRate =
+            tests.length > 0
+              ? Number(((passed / tests.length) * 100).toFixed(2))
+              : 0;
+
+          statuses[rId] = {
+            totalTests: tests.length,
+            passedTests: passed,
+            failedTests: failed,
+            passRate,
+          };
+        });
+
+        setRepoTestCases((prev) => ({ ...prev, ...grouped }));
+        setRepoStatus((prev) => ({ ...prev, ...statuses }));
+      } catch (err) {
+        console.error("Batch test cases prefetch error:", err);
+      }
+    };
+
+    prefetchAllTests();
+    return () => {
+      isMounted = false;
+    };
+  }, [repoList]);
 
   const deleteRepo = async (repoId: number) => {
     try {
@@ -109,7 +175,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
 
     try {
       setLoadingRepoId(repo.repoId);
-      setTestCaseLoading(true);
+      setLoadingRepoTests((prev) => ({ ...prev, [repo.repoId]: true }));
 
       const result = await axios.post("/api/generate-test-cases", {
         userId: user?.userDetails?.id,
@@ -130,41 +196,31 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
         }));
       }
 
-      await addTestCases(repo.repoId);
+      await addTestCases(repo.repoId, true);
     } catch (error: any) {
       console.error("Test case generation error:", error);
       alert(error?.response?.data?.error || error?.message || "Failed to generate test cases");
-      setTestCaseLoading(false);
     } finally {
       setLoadingRepoId(null);
+      setLoadingRepoTests((prev) => ({ ...prev, [repo.repoId]: false }));
     }
   };
 
-  const addTestCases = async (repoId: number) => {
+  const addTestCases = async (repoId: number, forceRefresh = false) => {
+    // If already in memory and not forced, return immediately for instant 0ms accordion open!
+    if (!forceRefresh && repoTestCases[repoId] && repoTestCases[repoId].length > 0) {
+      return;
+    }
+
     try {
-      setTestCaseLoading(true);
+      setLoadingRepoTests((prev) => ({ ...prev, [repoId]: true }));
 
       const result = await axios.get(
         `/api/test-cases?repoId=${repoId}`
       );
 
       const tests = result.data || [];
-
-      setRepoTestCases((prev) => ({
-        ...prev,
-        [repoId]: tests,
-      }));
-
-      setRepoStatus((prev) => ({
-        ...prev,
-        [repoId]: {
-          totalTests: tests.length,
-          passedTests: 0,
-          failedTests: 0,
-          passRate: 0,
-        },
-      }));
-      const userTestCases = result.data as TestCasetype[];
+      const userTestCases = tests as TestCasetype[];
 
       const passedTests = userTestCases.filter(
         (test) => test.status === "passed"
@@ -172,8 +228,15 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
       const failedTests = userTestCases.filter(
         (test) => test.status === "failed"
       ).length;
-      const passRate = tests.length > 0 ? Number(((passedTests / tests.length) * 100).toFixed(2)) : 0.00;
-      console.log("Pass Rate:", passRate);
+      const passRate =
+        tests.length > 0
+          ? Number(((passedTests / tests.length) * 100).toFixed(2))
+          : 0.0;
+
+      setRepoTestCases((prev) => ({
+        ...prev,
+        [repoId]: tests,
+      }));
 
       setRepoStatus((prev) => ({
         ...prev,
@@ -185,9 +248,9 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
         },
       }));
     } catch (error) {
-      console.log(error);
+      console.error("Failed to load test cases for repo:", repoId, error);
     } finally {
-      setTestCaseLoading(false);
+      setLoadingRepoTests((prev) => ({ ...prev, [repoId]: false }));
     }
   };
    
@@ -201,7 +264,12 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
         type="single"
         collapsible
         onValueChange={(value) => {
-          if (value) addTestCases(Number(value));
+          if (value) {
+            const rId = Number(value);
+            if (!repoTestCases[rId] || repoTestCases[rId].length === 0) {
+              addTestCases(rId);
+            }
+          }
         }}
       >
         {repoList.map((repo, index) => (
@@ -362,33 +430,22 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
                   />
                 </div>
 
-                {!testCaseLoading &&
-                  repoTestCases[
-                    repo.repoId
-                  ]?.length > 0 && (
-                    <TestCases
-                      testCaseList={
-                        repoTestCases[
-                          repo.repoId
-                        ]
-                      }
-                      onReload={() =>
-                        handleGenerateTestCases(
-                          repo
-                        )
-                      }
-                      repository={repo}
-                    />
-                  )}
+                {/* Test Cases List: Renders immediately if cached */}
+                {(repoTestCases[repo.repoId]?.length || 0) > 0 && (
+                  <TestCases
+                    testCaseList={repoTestCases[repo.repoId]}
+                    onReload={() => handleGenerateTestCases(repo)}
+                    repository={repo}
+                  />
+                )}
 
-                {testCaseLoading ? (
-                  <div className="flex justify-center p-4">
-                    <Loader2 className="animate-spin h-5 w-5" />
+                {loadingRepoTests[repo.repoId] && (repoTestCases[repo.repoId]?.length || 0) === 0 ? (
+                  <div className="flex justify-center p-6 text-slate-400 gap-2 items-center">
+                    <Loader2 className="animate-spin h-5 w-5 text-primary" />
+                    <span className="text-sm">Loading test cases...</span>
                   </div>
                 ) : (
-                  (repoTestCases[
-                    repo.repoId
-                  ]?.length || 0) === 0 && (
+                  (repoTestCases[repo.repoId]?.length || 0) === 0 && (
                     <div className="flex flex-col sm:flex-row justify-between gap-4 border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-gray-50 dark:bg-gray-800/40">
 
                       <div>

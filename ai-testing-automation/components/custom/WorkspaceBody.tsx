@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import RepoDialog from "./RepoDialog";
 import axios from "axios";
 import UserReposLists from "./UserReposLists";
+import { Loader2 } from "lucide-react";
 
 
 
@@ -39,55 +40,53 @@ function WorkspaceBody() {
   const [token, setToken] = useState<string | null>(null);
   const [refreshPage, setRefreshPage] = useState(false);
   const [userRepos, setUserRepos] = useState<UserRepo[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState<boolean>(true);
   
   const { userDetails, credits } = useContext(UserDetailContext);
-  
-  
   const router = useRouter();
 
+  const getGithubUserToken = async () => {
+    try {
+      const res = await fetch("/api/github/token");
+      if (!res.ok) {
+        throw new Error("Failed to fetch token");
+      }
+      const data = await res.json();
+      setToken(data.token);
+    } catch (err) {
+      console.log(err);
+      return null;
+    }
+  };
+
+  const getUserRepoList = async () => {
+    try {
+      setLoadingRepos(true);
+      const url = userDetails?.id ? `/api/user-repo?userId=${userDetails.id}` : "/api/user-repo";
+      const result = await axios.get(url);
+      setUserRepos(result.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
   useEffect(() => {
+    // Start fetching both GitHub token and saved repos in parallel on mount
     getGithubUserToken();
-   
+    getUserRepoList();
   }, []);
 
   useEffect(() => {
-  if (userDetails) {
-    getUserRepoList();
-    
-  }
-}, [userDetails, refreshPage]);
-
-
-
-  const getGithubUserToken = async () => {
-  try {
-    const res = await fetch("/api/github/token");
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch token");
+    if (userDetails) {
+      getUserRepoList();
     }
-
-    const data = await res.json();
-    setToken(data.token);
-
-  } catch (err) {
-    console.log(err);
-    return null;
-  }
-};
-
-
-
+  }, [userDetails, refreshPage]);
 
   const onAddRepo = () => {
     router.push("/api/github");
   };
-
-  const getUserRepoList = async ()=>{
-      const result = await axios.get("/api/user-repo?userId=" + userDetails?.id)
-      
-      setUserRepos(result.data);
-  }
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -186,9 +185,17 @@ function WorkspaceBody() {
       </Card>
       <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60">
         <CardContent className="p-6">
-            {userRepos.length === 0 ? <EmptyWorkspace /> : <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} setReload={setRefreshPage} />}
+          {loadingRepos && userRepos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm font-medium">Loading saved repositories...</p>
+            </div>
+          ) : userRepos.length === 0 ? (
+            <EmptyWorkspace />
+          ) : (
+            <UserReposLists repoList={userRepos} setUserRepos={setUserRepos} setReload={setRefreshPage} />
+          )}
         </CardContent>
-        
       </Card>
 
      

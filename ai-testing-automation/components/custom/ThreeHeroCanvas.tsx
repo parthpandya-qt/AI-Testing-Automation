@@ -22,8 +22,14 @@ export default function ThreeHeroCanvas() {
     );
     camera.position.z = 80;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: !isMobile,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     container.appendChild(renderer.domElement);
@@ -59,7 +65,7 @@ export default function ThreeHeroCanvas() {
     scene.add(indigoLight);
 
     // --- Twinkling 3D Star Particles for Parallax Depth ---
-    const particleCount = 1600;
+    const particleCount = isMobile ? 700 : 1500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);

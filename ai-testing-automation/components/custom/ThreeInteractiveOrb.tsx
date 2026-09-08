@@ -5,10 +5,10 @@ import * as THREE from "three";
 import { Globe, ShieldCheck, Zap } from "lucide-react";
 
 interface ThreeInteractiveOrbProps {
-  scrollProgress?: number;
+  badgesRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export default function ThreeInteractiveOrb({ scrollProgress = 0 }: ThreeInteractiveOrbProps) {
+export default function ThreeInteractiveOrb({ badgesRef }: ThreeInteractiveOrbProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [isInteracting, setIsInteracting] = useState(false);
 
@@ -16,8 +16,10 @@ export default function ThreeInteractiveOrb({ scrollProgress = 0 }: ThreeInterac
     const mount = mountRef.current;
     if (!mount) return;
 
-    const width = mount.clientWidth || 420;
-    const height = mount.clientHeight || 420;
+    const width = mount.clientWidth || 320;
+    const height = mount.clientHeight || 320;
+
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
     // --- Scene, Camera, Renderer ---
     const scene = new THREE.Scene();
@@ -25,8 +27,12 @@ export default function ThreeInteractiveOrb({ scrollProgress = 0 }: ThreeInterac
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.z = 4.4;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: !isMobile,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
@@ -249,13 +255,10 @@ export default function ThreeInteractiveOrb({ scrollProgress = 0 }: ThreeInterac
         title="Click and drag to rotate the photorealistic 3D Earth"
       />
 
-      {/* Floating Holographic Status Badges (Fade out smoothly as Earth centers) */}
+      {/* Floating Holographic Status Badges (Hidden on narrow mobile to prevent horizontal overflow) */}
       <div
-        style={{
-          opacity: Math.max(1 - scrollProgress * 2.5, 0),
-          transition: "opacity 0.2s ease-out",
-        }}
-        className="pointer-events-none"
+        ref={badgesRef}
+        className="pointer-events-none hidden sm:block transition-opacity duration-150"
       >
         <div className="absolute -top-3 -left-2 z-20 animate-bounce duration-1000">
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl backdrop-blur-md bg-slate-900/85 border border-cyan-500/40 text-cyan-300 text-xs font-semibold shadow-lg shadow-cyan-500/10">

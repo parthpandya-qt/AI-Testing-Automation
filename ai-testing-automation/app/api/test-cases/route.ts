@@ -1,5 +1,5 @@
 import { db, TestCasesTable, repositories } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { NextResponse, NextRequest } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth";
 
@@ -11,22 +11,42 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const repoId = searchParams.get("repoId");
-    if (!repoId) {
-        return NextResponse.json({ error: "Repository ID is required" }, { status: 400 });
-    }
 
     try {
-        // Verify that the repository exists and belongs to the authenticated user
-        const repo = await db.select().from(repositories).where(eq(repositories.repoId, Number(repoId))).limit(1);
-        if (repo.length === 0) {
-            return NextResponse.json({ error: "Repository not found" }, { status: 404 });
-        }
-        if (repo[0].userId !== user.id) {
-            return NextResponse.json({ error: "Forbidden: You do not own this repository" }, { status: 403 });
+        // Fast path: if repoId is "all" or omitted, return all test cases across user's repos in 1 fast query
+        if (!repoId || repoId === "all") {
+            const userRepos = await db.select({ repoId: repositories.repoId })
+                .from(repositories)
+                .where(eq(repositories.userId, user.id));
+
+            if (userRepos.length === 0) {
+                return NextResponse.json([]);
+            }
+
+            const repoIds = userRepos.map(r => String(r.repoId));
+            const allTestCases = await db.select()
+                .from(TestCasesTable)
+                .where(inArray(TestCasesTable.repoId, repoIds));
+
+            return NextResponse.json(allTestCases);
         }
 
-        const result = await db.select().from(TestCasesTable).where(eq(TestCasesTable.repoId, repoId));
-        return NextResponse.json(result);
+        // Single repo: run ownership check and test cases query in parallel
+        const [repoOwnerCheck, testCases] = await Promise.all([
+            db.select({ id: repositories.id })
+                .from(repositories)
+                .where(and(eq(repositories.repoId, Number(repoId)), eq(repositories.userId, user.id)))
+                .limit(1),
+            db.select()
+                .from(TestCasesTable)
+                .where(eq(TestCasesTable.repoId, repoId))
+        ]);
+
+        if (repoOwnerCheck.length === 0) {
+            return NextResponse.json({ error: "Repository not found or forbidden" }, { status: 404 });
+        }
+
+        return NextResponse.json(testCases);
     } catch (err: any) {
         console.error("Test cases API error:", err);
         return NextResponse.json({ error: "Failed to retrieve test cases" }, { status: 500 });
