@@ -230,7 +230,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-20 pt-20 pb-10 sm:pt-36 sm:pb-24 lg:pt-40 lg:pb-28 px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto pointer-events-none">
+      <section className="relative z-20 pt-24 pb-12 sm:pt-36 sm:pb-24 lg:pt-40 lg:pb-28 px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto pointer-events-none">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center pointer-events-none">
           
           {/* Left Hero Text Column */}

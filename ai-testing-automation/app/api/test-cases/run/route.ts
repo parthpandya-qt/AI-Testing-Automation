@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -341,6 +342,8 @@ Just return the executable code.
             })
             .where(eq(TestCasesTable.id, testCase.id));
 
+          invalidateTestCasesCache(user.id, testCase.repoId);
+
           return NextResponse.json({
             success: false,
             status: "failed",
@@ -404,6 +407,9 @@ Just return the executable code.
         })
         .where(eq(TestCasesTable.id, testCase.id));
 
+      // Invalidate test cases cache so UI gets fresh status
+      invalidateTestCasesCache(user.id, testCase.repoId);
+
       return NextResponse.json({
         success: true,
         status: "passed",
@@ -430,6 +436,8 @@ Just return the executable code.
           sessionUrl: session ? `https://www.browserbase.com/sessions/${session?.id}` : null, // Fixed: Added safe chaining here
         })
         .where(eq(TestCasesTable.id, testCase.id));
+
+      invalidateTestCasesCache(user.id, testCase.repoId);
 
       return NextResponse.json({
         success: false,

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { repositories, TestCasesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 export async function DELETE(req: NextRequest) {
     try {
@@ -46,6 +47,8 @@ export async function DELETE(req: NextRequest) {
                 .delete(TestCasesTable)
                 .where(eq(TestCasesTable.id, testCaseId));
 
+            invalidateTestCasesCache(user.id, testCase[0].repoId);
+
             return NextResponse.json({
                 success: true,
                 message: "Test case deleted successfully",
@@ -74,6 +77,8 @@ export async function DELETE(req: NextRequest) {
         await db
             .delete(TestCasesTable)
             .where(eq(TestCasesTable.id, testCaseId));
+
+        invalidateTestCasesCache(user.id, testCase[0].repoId);
 
         return NextResponse.json({
             success: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, repositories, TestCasesTable } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 export async function POST(req: NextRequest) {
     const user = await getAuthenticatedUser();
@@ -74,6 +75,8 @@ export async function DELETE(req: NextRequest) {
         await db.delete(repositories).where(eq(repositories.repoId, repoId));
         await db.delete(TestCasesTable).where(eq(TestCasesTable.repoId, String(repoId)));
         
+        invalidateTestCasesCache(user.id, repoId);
+
         return NextResponse.json({ message: "Repository deleted successfully" });
     } catch (err: any) {
         console.log(err);

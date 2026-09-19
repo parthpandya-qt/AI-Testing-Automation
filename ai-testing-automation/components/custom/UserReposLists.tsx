@@ -216,7 +216,7 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
       setLoadingRepoTests((prev) => ({ ...prev, [repoId]: true }));
 
       const result = await axios.get(
-        `/api/test-cases?repoId=${repoId}`
+        `/api/test-cases?repoId=${repoId}${forceRefresh ? "&refresh=true" : ""}`
       );
 
       const tests = result.data || [];

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { TestCasesTable, users, repositories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
@@ -326,6 +327,9 @@ Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, an
         }))
       )
       .returning();
+
+    // Invalidate cached test cases for this user and repo
+    invalidateTestCasesCache(user.id, repoId);
 
     const generatedCount = insertedTestCases.length;
     const creditCost = generatedCount * 10;
