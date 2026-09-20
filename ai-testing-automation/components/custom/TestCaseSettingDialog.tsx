@@ -13,6 +13,7 @@ import {
 
 import { SettingsIcon } from 'lucide-react'
 import { Button} from '../ui/button'
+import toast from 'react-hot-toast'
 import { Input } from '../ui/input'
 import { Textarea } from "@/components/ui/textarea"
 import { TestCasetype } from './UserReposLists'
@@ -42,19 +43,27 @@ function TestCaseSettingDialog({testCase, setReload}: props) {
     }
 
     const updateCase = async ()=>{
-      const response = await fetch("/api/test-cases/settings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            ...formData,
-            repoId: testCase.repoId,
-            testCaseId: testCase.id
-          })  
-        });
+      try {
+        const response = await fetch("/api/test-cases/settings",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ...formData,
+              repoId: testCase.repoId,
+              testCaseId: testCase.id
+            })  
+          });
+        if (!response.ok) {
+          throw new Error("Failed to save settings");
+        }
+        toast.success("Settings saved successfully!");
         setReload();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update test case");
+      }
     }
   
     return (

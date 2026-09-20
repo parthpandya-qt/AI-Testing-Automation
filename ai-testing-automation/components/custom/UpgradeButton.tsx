@@ -1,5 +1,7 @@
 "use client";
 
+import toast from "react-hot-toast";
+
 declare global {
   interface Window {
     Razorpay: any;
@@ -76,22 +78,24 @@ export default function UpgradeButton({
                 if (
                   result.success
                 ) {
-                  alert(
-                    "Payment Successful!"
+                  toast.success(
+                    "Payment Successful! Upgraded to Pro."
                   );
 
-                  window.location.reload();
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
                 } else {
-                  alert(
-                    "Payment Verification Failed"
+                  toast.error(
+                    result.error || "Payment Verification Failed"
                   );
                 }
-              } catch (error) {
+              } catch (error: any) {
                 console.error(
                   error
                 );
-                alert(
-                  "Something went wrong during verification"
+                toast.error(
+                  error?.message || "Something went wrong during verification"
                 );
               }
             },
@@ -107,17 +111,17 @@ export default function UpgradeButton({
             );
 
           payment.open();
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
 
-          alert(
-            "Unable to create payment order"
+          toast.error(
+            error?.message || "Unable to create payment order"
           );
         }
       };
 
       script.onerror = () => {
-        alert(
+        toast.error(
           "Failed to load Razorpay SDK"
         );
       };

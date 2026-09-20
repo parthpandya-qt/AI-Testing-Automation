@@ -22,6 +22,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { UserDetailContext } from "@/context/userDetailContext";
+import toast from "react-hot-toast";
 import TestCases from "./TestCases";
 import RepoSettings from "./RepoSettings";
 
@@ -162,14 +163,16 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
       setUserRepos((prev) =>
         prev.filter((repo) => repo.repoId !== repoId)
       );
-    } catch (error) {
-      console.log(error);
+      toast.success("Repository removed successfully");
+    } catch (error: any) {
+      console.error("Delete repo error:", error);
+      toast.error(error?.response?.data?.error || error?.message || "Failed to remove repository");
     }
   };
 
   const handleGenerateTestCases = async (repo: UserRepo) => {
-    if (user?.credits <= 0) {
-      alert("Insufficient credits. Please purchase more credits to generate test cases.");
+    if (user?.credits < 10) {
+      toast.error("Insufficient credits. You need at least 10 credits to generate test cases.");
       return;
     }
 
@@ -189,17 +192,21 @@ function UserReposLists({ repoList, setUserRepos, setReload }: Props) {
         user.setCredits(result.data.credits);
       }
 
-      if (Array.isArray(result.data?.testCases) && result.data.testCases.length > 0) {
+      const generatedList = result.data?.testCases || [];
+      if (Array.isArray(generatedList) && generatedList.length > 0) {
         setRepoTestCases((prev) => ({
           ...prev,
-          [repo.repoId]: result.data.testCases,
+          [repo.repoId]: generatedList,
         }));
+        toast.success(`Generated ${generatedList.length} test cases successfully!`);
+      } else {
+        toast.success("Test cases generated successfully!");
       }
 
       await addTestCases(repo.repoId, true);
     } catch (error: any) {
       console.error("Test case generation error:", error);
-      alert(error?.response?.data?.error || error?.message || "Failed to generate test cases");
+      toast.error(error?.response?.data?.error || error?.message || "Failed to generate test cases");
     } finally {
       setLoadingRepoId(null);
       setLoadingRepoTests((prev) => ({ ...prev, [repo.repoId]: false }));

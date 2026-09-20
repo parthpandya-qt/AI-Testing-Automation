@@ -7,6 +7,31 @@ import { headers } from "next/headers";
 // In-memory authentication cache: Clerk userId -> DB User object (5-minute TTL)
 const authUserCache = new Map<string, { user: typeof users.$inferSelect; expiresAt: number }>();
 
+export function invalidateAuthUserCache(userId?: string | number | null) {
+  if (!userId) {
+    authUserCache.clear();
+    return;
+  }
+
+  const userIdStr = String(userId);
+  authUserCache.delete(userIdStr);
+
+  for (const [key, entry] of authUserCache.entries()) {
+    if (String(entry.user.id) === userIdStr || key === userIdStr) {
+      authUserCache.delete(key);
+    }
+  }
+}
+
+export function updateAuthUserCachedCredits(userId: string | number, newCredits: number) {
+  const userIdStr = String(userId);
+  for (const [key, entry] of authUserCache.entries()) {
+    if (String(entry.user.id) === userIdStr || key === userIdStr) {
+      entry.user.credits = newCredits;
+    }
+  }
+}
+
 export async function getAuthenticatedUser() {
   try {
     let isTestBypass = false;

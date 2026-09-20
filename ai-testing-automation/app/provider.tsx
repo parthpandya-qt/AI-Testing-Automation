@@ -7,6 +7,7 @@ import React, {
 import axios from "axios";
 import { useUser } from "@clerk/nextjs";
 import { UserDetailContext } from "@/context/userDetailContext";
+import { Toaster } from "react-hot-toast";
 
 function Provider({
   children,
@@ -165,6 +166,37 @@ function Provider({
         setCredits,
       }}
     >
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        gutter={8}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "#090d16",
+            color: "#f8fafc",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "12px",
+            fontSize: "13.5px",
+            fontWeight: "500",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(12px)",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#ffffff",
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#ffffff",
+            },
+          },
+        }}
+      />
       {children}
     </UserDetailContext.Provider>
   );

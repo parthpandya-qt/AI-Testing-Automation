@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "@/db";
 import { TestCasesTable, users, repositories } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { eq, and, sql } from "drizzle-orm";
+import { getAuthenticatedUser, invalidateAuthUserCache } from "@/lib/auth";
 import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 const ai = new GoogleGenAI({
@@ -87,10 +88,11 @@ async function getRepoTree({
   }
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch GitHub repo tree for ${owner}/${repo} (branch: ${branch})`);
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`Failed to fetch GitHub repo tree for ${owner}/${repo} (${res.status}): ${errBody || res.statusText}`);
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!Array.isArray(data.tree)) return [];
 
   return data.tree
@@ -129,8 +131,8 @@ async function readGithubFile({
     clearTimeout(timeoutId);
 
     if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.content) return null;
+    const data = await res.json().catch(() => null);
+    if (!data || !data.content) return null;
 
     const decodedContent = Buffer.from(data.content, "base64").toString("utf-8");
 
@@ -145,12 +147,14 @@ async function readGithubFile({
 
 export async function generateStackTestCases({
   req,
+  body,
   techStack,
   allowedExtensions,
   customIgnorePaths = [],
   stackPrompt,
 }: {
   req: NextRequest;
+  body?: any;
   techStack: string;
   allowedExtensions: string[];
   customIgnorePaths?: string[];
@@ -162,22 +166,33 @@ export async function generateStackTestCases({
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (user.credits <= 0) {
+    if (user.credits < 10) {
       return NextResponse.json(
-        { error: "Insufficient credits. Please purchase more credits to generate test cases." },
+        { error: "Insufficient credits. You need at least 10 credits to generate test cases. Please top up." },
         { status: 403 }
       );
     }
 
-    const body = await req.json();
+    const requestBody = body || (await req.json().catch(() => ({})));
+    const cookiesStore = await cookies();
     const githubToken =
-      req.cookies.get(`github_token_${user.id}`)?.value || req.cookies.get("github_token")?.value;
+      cookiesStore.get(`github_token_${user.id}`)?.value ||
+      cookiesStore.get("github_token")?.value ||
+      req.cookies?.get(`github_token_${user.id}`)?.value ||
+      req.cookies?.get("github_token")?.value;
 
-    const { repoId, owner, repo, branch = "main" } = body;
+    const { repoId, owner, repo, branch = "main" } = requestBody;
 
-    if (!repoId || !owner || !repo || !githubToken) {
+    if (!githubToken) {
       return NextResponse.json(
-        { error: "repoId, owner, repo and githubToken are required" },
+        { error: "GitHub account not connected or session expired. Please connect your GitHub account." },
+        { status: 400 }
+      );
+    }
+
+    if (!repoId || !owner || !repo) {
+      return NextResponse.json(
+        { error: "repoId, owner and repo are required" },
         { status: 400 }
       );
     }
@@ -253,7 +268,7 @@ Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, an
       contents: defaultPromptHeader,
       config: {
         temperature: 0.2,
-        maxOutputTokens: 2500,
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -297,13 +312,35 @@ Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, an
       },
     });
 
-    let rawResponseText = response.text || "{}";
+    let rawResponseText = (response.text || "{}").trim();
     rawResponseText = rawResponseText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "").trim();
-    const aiResult = JSON.parse(rawResponseText || "{}");
-    const testCases = aiResult.testCases || [];
 
-    if (!testCases.length) {
-      return NextResponse.json({ error: "Gemini did not generate any test cases" }, { status: 400 });
+    let testCases: any[] = [];
+    try {
+      const aiResult = JSON.parse(rawResponseText || "{}");
+      testCases = Array.isArray(aiResult) ? aiResult : (aiResult.testCases || []);
+    } catch (parseErr: any) {
+      console.warn("Direct JSON.parse failed on AI response, attempting recovery...", parseErr?.message);
+      try {
+        const match = rawResponseText.match(/\{[\s\S]*"testCases"\s*:\s*\[[\s\S]*\][\s\S]*\}/);
+        if (match) {
+          const recovered = JSON.parse(match[0]);
+          testCases = Array.isArray(recovered) ? recovered : (recovered.testCases || []);
+        } else {
+          const lastBrace = rawResponseText.lastIndexOf("}");
+          if (lastBrace !== -1) {
+            const truncatedFixed = rawResponseText.slice(0, lastBrace + 1) + "]}";
+            const recovered = JSON.parse(truncatedFixed);
+            testCases = recovered.testCases || [];
+          }
+        }
+      } catch (recoveryErr: any) {
+        console.error("AI response recovery failed:", recoveryErr?.message);
+      }
+    }
+
+    if (!testCases || testCases.length === 0) {
+      return NextResponse.json({ error: "Gemini did not generate valid test cases. Please try again." }, { status: 400 });
     }
 
     const insertedTestCases = await db
@@ -334,15 +371,16 @@ Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, an
     const generatedCount = insertedTestCases.length;
     const creditCost = generatedCount * 10;
 
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-    });
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        credits: sql`GREATEST(0, ${users.credits} - ${creditCost})`,
+      })
+      .where(eq(users.id, user.id))
+      .returning({ credits: users.credits });
 
-    let newCredits = 0;
-    if (existingUser) {
-      newCredits = Math.max(0, existingUser.credits - creditCost);
-      await db.update(users).set({ credits: newCredits }).where(eq(users.id, user.id));
-    }
+    const newCredits = updatedUser?.credits ?? 0;
+    invalidateAuthUserCache(user.id);
 
     return NextResponse.json({
       success: true,

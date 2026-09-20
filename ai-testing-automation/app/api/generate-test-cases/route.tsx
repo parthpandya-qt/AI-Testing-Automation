@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const bodyText = await req.text();
-    const body = JSON.parse(bodyText || "{}");
+    const body = await req.json().catch(() => ({}));
     const { repoId, techStack: bodyStack } = body;
 
     let activeTechStack = bodyStack || "nextjs";
@@ -33,17 +32,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Forward request to tech stack specific runner
-    const clonedReq = new NextRequest(req.url, {
-      method: "POST",
-      headers: req.headers,
-      body: bodyText,
-    });
-
     switch (activeTechStack.toLowerCase()) {
       case "java":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "java",
           allowedExtensions: [".java", ".jsp", ".kt", ".xml", ".gradle", ".properties", ".yaml", ".yml", ".html"],
           customIgnorePaths: ["target", ".gradle", "gradle", ".idea", "bin", "out"],
@@ -52,7 +45,8 @@ export async function POST(req: NextRequest) {
 
       case "python":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "python",
           allowedExtensions: [".py", ".html", ".json", ".yaml", ".yml"],
           customIgnorePaths: ["__pycache__", "venv", ".venv", ".pytest_cache"],
@@ -61,7 +55,8 @@ export async function POST(req: NextRequest) {
 
       case "go":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "go",
           allowedExtensions: [".go", ".html", ".json"],
           customIgnorePaths: ["vendor", "bin"],
@@ -70,7 +65,8 @@ export async function POST(req: NextRequest) {
 
       case "csharp":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "csharp",
           allowedExtensions: [".cs", ".cshtml", ".json", ".csproj"],
           customIgnorePaths: ["bin", "obj", ".vs"],
@@ -79,7 +75,8 @@ export async function POST(req: NextRequest) {
 
       case "php":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "php",
           allowedExtensions: [".php", ".html", ".css", ".json"],
           customIgnorePaths: ["vendor", "storage", "bootstrap/cache"],
@@ -88,7 +85,8 @@ export async function POST(req: NextRequest) {
 
       case "mern":
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "mern",
           allowedExtensions: [".js", ".jsx", ".ts", ".tsx", ".json", ".html", ".css"],
           customIgnorePaths: ["node_modules", "build", "dist", ".next", "coverage"],
@@ -98,7 +96,8 @@ export async function POST(req: NextRequest) {
       case "nextjs":
       default:
         return generateStackTestCases({
-          req: clonedReq,
+          req,
+          body,
           techStack: "nextjs",
           allowedExtensions: [".tsx", ".ts", ".jsx", ".js", ".json", ".css", ".html"],
           customIgnorePaths: [".next", "build", "dist", "out"],

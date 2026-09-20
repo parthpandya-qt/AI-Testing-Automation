@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/accordion";
 import { useState, useContext } from "react";
 import { UserDetailContext } from "@/context/userDetailContext";
+import toast from "react-hot-toast";
 
 export default function Support() {
   const context = useContext(UserDetailContext);
@@ -40,16 +41,16 @@ export default function Support() {
       });
 
       if (res.ok) {
-        alert("Support request submitted successfully. We'll be in touch soon!");
+        toast.success("Support request submitted successfully. We'll be in touch soon!");
         setSubject("");
         setCategory("");
         setDescription("");
       } else {
-        alert("Failed to submit ticket. Please try again.");
+        toast.error("Failed to submit ticket. Please try again.");
       }
     } catch (err) {
       console.error("Support ticket submit error:", err);
-      alert("An error occurred while submitting your ticket.");
+      toast.error("An error occurred while submitting your ticket.");
     } finally {
       setIsSubmitting(false);
     }

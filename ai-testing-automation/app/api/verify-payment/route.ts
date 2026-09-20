@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getAuthenticatedUser, invalidateAuthUserCache } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,9 +58,13 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(users.id, user.id));
 
+    invalidateAuthUserCache(user.id);
+
     return NextResponse.json({
       success: true,
       message: "Payment verified successfully",
+      plan: "pro",
+      credits: 10000,
     });
   } catch (error: any) {
     console.error("Payment verification error:", error);

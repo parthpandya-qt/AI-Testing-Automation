@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { UserDetailContext } from "@/context/userDetailContext";
 import {
   Dialog,
   DialogContent,
@@ -73,6 +74,7 @@ const TECH_STACKS = [
 ];
 
 export default function TestExecutionModal({ isOpen, onClose, testCases, repository }: Props) {
+  const userDetail = useContext(UserDetailContext);
   const [baseUrl, setBaseUrl] = useState("http://localhost:3000");
   const [techStack, setTechStack] = useState("nextjs");
   const [currentIdx, setCurrentIdx] = useState(-1);
@@ -188,6 +190,10 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
         });
 
         const data = res.data;
+
+        if (data.credits !== undefined && userDetail?.setCredits) {
+          userDetail.setCredits(data.credits);
+        }
 
         setResults((prev) => ({
           ...prev,

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { db } from "@/db";
-import { TestCasesTable, repositories } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, TestCasesTable, repositories } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getAuthenticatedUser, invalidateAuthUserCache } from "@/lib/auth";
 import { invalidateTestCasesCache } from "@/lib/testCasesCache";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +94,16 @@ export async function POST(req: NextRequest) {
 
     if (testCase.userId !== String(user.id)) {
       return NextResponse.json({ error: "Forbidden: You do not own this test case" }, { status: 403 });
+    }
+
+    const TEST_RUN_COST = 20;
+    if (user.credits < TEST_RUN_COST) {
+      return NextResponse.json(
+        {
+          error: `Insufficient credits. Running a cloud browser test requires ${TEST_RUN_COST} credits, but you have ${user.credits}. Please purchase more credits.`,
+        },
+        { status: 403 }
+      );
     }
 
     // Update testCase techStack if provided
@@ -305,6 +315,18 @@ Just return the executable code.
         .where(eq(TestCasesTable.id, testCase.id));
     }
 
+    // Deduct execution credits atomically
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        credits: sql`GREATEST(0, ${users.credits} - ${TEST_RUN_COST})`,
+      })
+      .where(eq(users.id, user.id))
+      .returning({ credits: users.credits });
+
+    const remainingCredits = updatedUser?.credits ?? Math.max(0, user.credits - TEST_RUN_COST);
+    invalidateAuthUserCache(user.id);
+
     const logs: string[] = [];
     const customConsole = {
       log: (...args: any[]) => logs.push(args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")),
@@ -320,13 +342,14 @@ Just return the executable code.
       const isLocalhost = resolvedBaseUrl.includes("localhost") || resolvedBaseUrl.includes("127.0.0.1");
 
       if (isLocalhost) {
+        logs.push(`[SYSTEM] Target URL is localhost. Attempting local Chromium launch on machine...`);
         try {
-          logs.push(`[SYSTEM] Target URL is localhost. Attempting local Chromium execution...`);
           browser = await chromium.launch({ headless: true });
           isLocal = true;
-          logs.push(`[SYSTEM] Local Chromium launched successfully.`);
+          logs.push(`[SYSTEM] Local Chromium browser launched successfully!`);
         } catch (localErr: any) {
-          logs.push(`[SYSTEM ERROR] Local Chromium launch failed: ${localErr.message || String(localErr)}`);
+          console.warn("Local Chromium launch failed:", localErr?.message);
+          logs.push(`[SYSTEM ERROR] Local Chromium launch failed: ${localErr?.message || "Browser executable not found"}`);
           logs.push(`[SYSTEM ERROR] Remote Browserbase cloud browsers cannot access 'localhost' on your machine.`);
           logs.push(`[SYSTEM HINT] 1. Run "npx playwright install chromium" in your local terminal.`);
           logs.push(`[SYSTEM HINT] 2. Or set your Target Website URL to an ngrok tunnel or public deployment URL (e.g. https://your-app.vercel.app).`);
@@ -350,6 +373,7 @@ Just return the executable code.
             error: "Local Chromium launch failed. Install Chromium locally (npx playwright install chromium) or use a public target URL.",
             logs,
             browserbaseScript: scriptText,
+            credits: remainingCredits,
           });
         }
       }
@@ -360,8 +384,8 @@ Just return the executable code.
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
         });
 
-        logs.push(`[SYSTEM] Browserbase session created successfully with ID: ${session.id}`);
-        logs.push(`[SYSTEM] Connected to Browserbase cloud browser, executing script...`);
+        logs.push(`[SYSTEM] Browserbase session created: ${session.id}`);
+        logs.push(`[SYSTEM] Connecting to remote browser instance via Playwright CDP...`);
         browser = await chromium.connectOverCDP(session.connectUrl);
       }
       
@@ -417,6 +441,7 @@ Just return the executable code.
         sessionUrl: session ? `https://www.browserbase.com/sessions/${session.id}` : null,
         logs,
         browserbaseScript: scriptText,
+        credits: remainingCredits,
       });
     } catch (execError: any) {
       console.error("Script execution error:", execError);
@@ -447,6 +472,7 @@ Just return the executable code.
         sessionUrl: session ? `https://www.browserbase.com/sessions/${session?.id}` : null, // Fixed: Added safe chaining here
         logs,
         browserbaseScript: scriptText,
+        credits: remainingCredits,
       });
     }
   } catch (error: any) {

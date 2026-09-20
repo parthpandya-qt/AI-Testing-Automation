@@ -12,6 +12,7 @@ import { Button } from '../ui/button'
 import { Settings2 } from 'lucide-react'
 import { Textarea } from '../ui/textarea'
 import { DialogClose } from '@radix-ui/react-dialog'
+import toast from 'react-hot-toast'
 
 
 import { UserRepo } from './WorkspaceBody';
@@ -41,6 +42,7 @@ function RepoSettings({ repo, setReload }:props) {
     }, [repo]);
 
     const handleSaveSettings = async () => {
+      try {
         const result = await fetch("/api/user-repo/settings", {
             method: "POST",
             headers: {
@@ -53,9 +55,13 @@ function RepoSettings({ repo, setReload }:props) {
                 techStack: reposettings.techStack
             })
         });
-        console.log("Settings saved:", await result.json());
+        if (!result.ok) throw new Error("Failed to save project settings");
+        toast.success("Project settings saved successfully!");
         setIsOpen(false);
         setReload(prev => !prev);
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to save project settings");
+      }
     }
   return (
     <div>
