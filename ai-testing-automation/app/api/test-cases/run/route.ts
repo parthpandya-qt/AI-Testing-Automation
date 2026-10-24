@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
     if (resolvedBaseUrl.includes("localhost")) {
       resolvedBaseUrl = resolvedBaseUrl.replace("localhost", "127.0.0.1");
     }
+    const cleanBaseUrl = resolvedBaseUrl.endsWith('/') ? resolvedBaseUrl.slice(0, -1) : resolvedBaseUrl;
 
     // 1. Fetch test case from DB
     const [testCase] = await db
@@ -198,7 +199,6 @@ export async function POST(req: NextRequest) {
         : "";
 
       // Ensure target route concatenation doesn't result in double slashes
-      const cleanBaseUrl = resolvedBaseUrl.endsWith('/') ? resolvedBaseUrl.slice(0, -1) : resolvedBaseUrl;
       const cleanTargetRoute = (testCase.targetRoute || "/").startsWith('/') ? (testCase.targetRoute || "/") : `/${testCase.targetRoute || ""}`;
       const targetUrl = `${cleanBaseUrl}${cleanTargetRoute}`;
 
@@ -223,6 +223,7 @@ The following variables are pre-injected into your runtime environment scope:
 'console': The custom console object to output log messages.
 'assert': Pre-injected helper function assert(condition, message) that throws an Error if condition is false. DO NOT redeclare 'function assert' or 'const assert' in your code.
 'testCase': Object containing current test case details.
+'Buffer': Node.js Buffer for creating files or buffers.
 IMPORTANT:
 Do NOT import assert, playwright, browserbase, or any other modules.
 DO NOT declare 'function assert' or 'const assert' anywhere in your code—use the pre-injected assert(condition, message) function directly.
@@ -336,6 +337,7 @@ Just return the executable code.
 
     let session: any = null;
     let browser: any = null;
+    let page: any = null;
     let isLocal = false;
 
     try {
@@ -392,11 +394,16 @@ Just return the executable code.
       const context = isLocal ? await browser.newContext() : browser.contexts()[0];
       await context.setExtraHTTPHeaders({ "x-test-bypass": "true" });
 
-      const page = isLocal ? await context.newPage() : (context.pages()[0] || (await context.newPage()));
+      page = isLocal ? await context.newPage() : (context.pages()[0] || (await context.newPage()));
 
       page.on("console", (msg: any) => {
         logs.push(`[BROWSER] [${msg.type().toUpperCase()}] ${msg.text()}`);
       });
+
+      // Pre-navigate to cleanBaseUrl to ensure origin is initialized and prevent DOMException on about:blank
+      try {
+        await page.goto(cleanBaseUrl, { waitUntil: "domcontentloaded", timeout: 8000 }).catch(() => {});
+      } catch (_) {}
 
       let resolvedScriptText = scriptText;
       if (resolvedScriptText) {
@@ -408,13 +415,13 @@ Just return the executable code.
       }
 
       const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-      const runFn = new AsyncFunction("page", "assert", "console", "testCase", resolvedScriptText);
+      const runFn = new AsyncFunction("page", "assert", "console", "testCase", "Buffer", resolvedScriptText);
 
       const assertHelper = (condition: boolean, message?: string) => {
         if (!condition) throw new Error(message || "Assertion failed");
       };
 
-      await runFn(page, assertHelper, customConsole, testCase);
+      await runFn(page, assertHelper, customConsole, testCase, Buffer);
       logs.push(`[SYSTEM] Script execution completed successfully without errors.`);
 
       await page.close().catch(() => {});
@@ -445,6 +452,20 @@ Just return the executable code.
       });
     } catch (execError: any) {
       console.error("Script execution error:", execError);
+
+      // Check if the current page was a 404 or server error to give clear diagnostics
+      try {
+        if (page && !page.isClosed()) {
+          const pageUrl = page.url();
+          const pageTitle = await page.title().catch(() => "");
+          const pageBody = await page.innerText("body").catch(() => "");
+          if (pageBody.includes("404") || pageTitle.includes("404") || pageBody.toLowerCase().includes("page could not be found")) {
+            logs.push(`[DIAGNOSTIC] Page at "${pageUrl}" returned 404 (Not Found).`);
+            logs.push(`[DIAGNOSTIC HINT] The target application "${testCase.repoName}" may not be running on ${resolvedBaseUrl}. Please verify the target app is running and update the Target Website URL in Project Settings.`);
+          }
+        }
+      } catch (_) {}
+
       logs.push(`[SYSTEM ERROR] Script execution failed: ${execError.message || String(execError)}`);
 
       if (browser) {
