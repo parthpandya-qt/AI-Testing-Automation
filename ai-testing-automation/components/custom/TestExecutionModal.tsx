@@ -107,19 +107,29 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
     }
   };
 
-  // Initialize states when testCases change or modal opens
+  const wasOpenRef = React.useRef(false);
+
+  // Initialize states when modal opens (transition from closed -> open)
   useEffect(() => {
-    if (isOpen && testCases.length > 0) {
+    if (isOpen && !wasOpenRef.current && testCases.length > 0) {
+      wasOpenRef.current = true;
+
+      const initialTechStack = repository?.techStack || (testCases[0] as any)?.techStack || "nextjs";
+      setTechStack(initialTechStack);
+
+      const defaultPort = TECH_STACKS.find((s) => s.id === initialTechStack)?.port || "http://localhost:3000";
+      setBaseUrl(repository?.targetDomain || repository?.websiteUrl || defaultPort);
+
+      const hasMissingScript = testCases.some((tc) => !(tc as any).browserbaseScript);
+      setExecutionMode(hasMissingScript ? "generate" : "cache");
+      setCustomPrompt("");
+
       const initial: Record<number, RunResult> = {};
       testCases.forEach((tc) => {
-        const tcStatus = (tc as any).status;
-        const tcLogs = (tc as any).logs;
-        const hasPreviousLogs = Array.isArray(tcLogs) && tcLogs.length > 0;
-
         initial[tc.id] = {
           testCaseId: tc.id,
-          status: (tcStatus === "passed" || tcStatus === "failed") ? tcStatus : "idle",
-          logs: hasPreviousLogs ? tcLogs : ["Waiting to run..."],
+          status: "idle",
+          logs: ["Queued for execution..."],
           browserbaseScript: (tc as any).browserbaseScript || undefined,
           sessionId: (tc as any).session_id || (tc as any).sessionId || undefined,
           sessionUrl: (tc as any).sessionUrl || (tc as any).session_url || undefined,
@@ -127,34 +137,31 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
       });
       setResults(initial);
       setSelectedDetailId(testCases[0].id);
-      setCurrentIdx(-1);
+
+      // Auto-start queue execution immediately so tests don't sit idle
+      setIsExecuting(true);
+      setCurrentIdx(0);
+    } else if (!isOpen) {
+      wasOpenRef.current = false;
       setIsExecuting(false);
-      setCustomPrompt("");
-
-      const initialTechStack = repository?.techStack || (testCases[0] as any)?.techStack || "nextjs";
-      setTechStack(initialTechStack);
-
-      // Prefill with repository's saved website URL if available
-      const defaultPort = TECH_STACKS.find((s) => s.id === initialTechStack)?.port || "http://localhost:3000";
-      setBaseUrl(repository?.targetDomain || repository?.websiteUrl || defaultPort);
-
-      // Auto-detect if any selected testcase doesn't have a cached script.
-      const hasMissingScript = testCases.some(tc => !(tc as any).browserbaseScript);
-      setExecutionMode(hasMissingScript ? "generate" : "cache");
+      setCurrentIdx(-1);
     }
-  }, [isOpen, testCases, repository]);
+  }, [isOpen]);
 
   // Handle executing the queue sequentially
   useEffect(() => {
     if (!isExecuting || currentIdx < 0 || currentIdx >= testCases.length) {
-      if (currentIdx >= testCases.length) {
+      if (currentIdx >= testCases.length && isExecuting) {
         setIsExecuting(false);
       }
       return;
     }
 
+    let isCancelled = false;
+
     const runTest = async () => {
       const currentTestCase = testCases[currentIdx];
+      if (!currentTestCase) return;
       const tcId = currentTestCase.id;
 
       setSelectedDetailId(tcId);
@@ -168,15 +175,20 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           status: isRegenerating ? "generating" : "running",
           logs: [
             ...(isRegenerating 
-              ? ["[SYSTEM] Connecting to AI agent to analyze files and generate script..."]
-              : ["[SYSTEM] Found pre-generated script cached in database, preparing execution..."]
+              ? [
+                  `[SYSTEM] Starting test ${currentIdx + 1}/${testCases.length}: "${currentTestCase.title}"`,
+                  `[SYSTEM] Connecting to AI agent to analyze repository files and generate automation script...`
+                ]
+              : [
+                  `[SYSTEM] Starting test ${currentIdx + 1}/${testCases.length}: "${currentTestCase.title}"`,
+                  `[SYSTEM] Using pre-generated automation script from database...`
+                ]
             )
           ],
         },
       }));
 
       try {
-        // Call run API with advanced flags
         const targetMode = executionMode === "cache" 
           ? "cache" 
           : (results[tcId]?.browserbaseScript && customPrompt.trim() === "" ? "cache" : "generate");
@@ -187,8 +199,11 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           mode: targetMode,
           customPrompt: customPrompt.trim(),
           techStack: techStack,
+        }, {
+          timeout: 65000,
         });
 
+        if (isCancelled) return;
         const data = res.data;
 
         if (data.credits !== undefined && userDetail?.setCredits) {
@@ -200,7 +215,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           [tcId]: {
             testCaseId: tcId,
             status: data.status,
-            logs: data.logs || [],
+            logs: data.logs && data.logs.length > 0 ? data.logs : [`[SYSTEM] Completed with status: ${data.status}`],
             browserbaseScript: data.browserbaseScript,
             sessionId: data.sessionId,
             sessionUrl: data.sessionUrl,
@@ -208,6 +223,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
           },
         }));
       } catch (err: any) {
+        if (isCancelled) return;
         const errMsg = err.response?.data?.error || err.message || "Execution failed";
         setResults((prev) => ({
           ...prev,
@@ -220,12 +236,17 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
         }));
       }
 
-      // Move to next item in the queue
-      setCurrentIdx((prev) => prev + 1);
+      if (!isCancelled) {
+        setCurrentIdx((prev) => prev + 1);
+      }
     };
 
     runTest();
-  }, [isExecuting, currentIdx, testCases, baseUrl, executionMode, techStack]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isExecuting, currentIdx]);
 
   const startExecution = () => {
     // Reset all statuses
@@ -234,14 +255,16 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
       resetResults[tc.id] = {
         testCaseId: tc.id,
         status: "idle",
-        logs: ["Queued..."],
+        logs: ["Queued for execution..."],
         browserbaseScript: tc.browserbaseScript || undefined,
       };
     });
     setResults(resetResults);
     setIsExecuting(true);
     setCurrentIdx(0);
-    setSelectedDetailId(testCases[0].id);
+    if (testCases.length > 0) {
+      setSelectedDetailId(testCases[0].id);
+    }
   };
 
   const stopExecution = () => {

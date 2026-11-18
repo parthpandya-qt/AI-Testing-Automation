@@ -48,7 +48,12 @@ React.useEffect(() => {
 };
  
 
-return (
+  const selectedTestCasesList = React.useMemo(
+    () => testCases.filter((tc) => selectedTestCases.includes(tc.id)),
+    [testCases, selectedTestCases]
+  );
+
+  return (
     <div>
       
       <div className = "flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mt-5 px-5">
@@ -137,7 +142,7 @@ return (
             setIsModalOpen(false);
             onReload();
           }}
-          testCases={testCases.filter((tc) => selectedTestCases.includes(tc.id))}
+          testCases={selectedTestCasesList}
           repository={repository}
         />
     </div>
