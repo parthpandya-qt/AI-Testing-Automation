@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { db } from "@/db";
 import { TestCasesTable, users, repositories } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser, invalidateAuthUserCache } from "@/lib/auth";
 import { invalidateTestCasesCache } from "@/lib/testCasesCache";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
+import { generateContentWithFallback } from "@/lib/gemini";
 
 const DEFAULT_IGNORE_PATHS = [
   "node_modules",
@@ -46,6 +43,19 @@ function isUsefulFile(filePath: string, allowedExtensions: string[], ignorePaths
   const isIgnored = ignorePaths.some((item) => filePath.includes(item));
   const isAllowed = allowedExtensions.some((ext) => filePath.endsWith(ext));
   return !isIgnored && isAllowed;
+}
+
+function getFilePriorityScore(filePath: string): number {
+  const lower = filePath.toLowerCase();
+  // Highest priority: routes, pages, controllers, and APIs
+  if (lower.includes("/page.") || lower.includes("/route.") || lower.includes("routes/") || lower.includes("controllers/")) return 100;
+  // High priority: views, components, models, schemas, handlers
+  if (lower.includes("/views/") || lower.includes("/components/") || lower.includes("/models/") || lower.includes("schema")) return 80;
+  if (lower.includes("service") || lower.includes("handler") || lower.includes("/api/")) return 60;
+  // Medium priority: main source files
+  if (lower.startsWith("src/") || lower.startsWith("app/") || lower.startsWith("lib/")) return 40;
+  // Lower priority: root configs, styles, etc.
+  return 10;
 }
 
 async function getRepoTree({
@@ -87,6 +97,19 @@ async function getRepoTree({
     );
   }
 
+  // If both main and master fail, attempt git trees/HEAD which GitHub automatically maps to the repo's default branch
+  if (!res.ok) {
+    res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: "application/vnd.github+json",
+        },
+      }
+    );
+  }
+
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
     throw new Error(`Failed to fetch GitHub repo tree for ${owner}/${repo} (${res.status}): ${errBody || res.statusText}`);
@@ -98,6 +121,7 @@ async function getRepoTree({
   return data.tree
     .filter((item: any) => item.type === "blob")
     .filter((item: any) => isUsefulFile(item.path, allowedExtensions, ignorePaths))
+    .sort((a: any, b: any) => getFilePriorityScore(b.path) - getFilePriorityScore(a.path))
     .slice(0, 20);
 }
 
@@ -115,7 +139,7 @@ async function readGithubFile({
   githubToken: string;
 }) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500);
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
     const res = await fetch(
@@ -179,9 +203,11 @@ export async function generateStackTestCases({
       cookiesStore.get(`github_token_${user.id}`)?.value ||
       cookiesStore.get("github_token")?.value ||
       req.cookies?.get(`github_token_${user.id}`)?.value ||
-      req.cookies?.get("github_token")?.value;
+      req.cookies?.get("github_token")?.value ||
+      req.headers.get("x-github-token") ||
+      requestBody.githubToken;
 
-    const { repoId, owner, repo, branch = "main" } = requestBody;
+    const { repoId, owner, repo } = requestBody;
 
     if (!githubToken) {
       return NextResponse.json(
@@ -207,6 +233,8 @@ export async function generateStackTestCases({
     if (repoCheck.length === 0) {
       return NextResponse.json({ error: "Forbidden: You do not own this repository" }, { status: 403 });
     }
+
+    const branch = requestBody.branch || repoCheck[0]?.defaultBranch || "main";
 
     // Ensure repository techStack is updated
     await db.update(repositories).set({ techStack }).where(eq(repositories.repoId, Number(repoId)));
@@ -263,9 +291,9 @@ ${repoContext}
 Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, and REST API endpoints.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    const { response, modelUsed } = await generateContentWithFallback({
       contents: defaultPromptHeader,
+      preferredModel: "gemini-2.5-flash",
       config: {
         temperature: 0.2,
         maxOutputTokens: 8192,
@@ -311,6 +339,8 @@ Generate 5 to 10 test cases covering UI routes, form submissions, auth flows, an
         },
       },
     });
+
+    console.log(`[Test Generation] Successfully generated using model: ${modelUsed}`);
 
     let rawResponseText = (response.text || "{}").trim();
     rawResponseText = rawResponseText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "").trim();

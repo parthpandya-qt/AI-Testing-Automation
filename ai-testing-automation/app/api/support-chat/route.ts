@@ -1,9 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { generateContentWithFallback } from "@/lib/gemini";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -199,8 +197,8 @@ USER QUESTION
 ${message}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    const { response } = await generateContentWithFallback({
+      preferredModel: "gemini-2.5-flash",
       contents: systemPrompt,
     });
 

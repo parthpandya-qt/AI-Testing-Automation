@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import { db } from "@/db";
 import { users, TestCasesTable, repositories } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -8,13 +7,10 @@ import { Browserbase } from "@browserbasehq/sdk";
 import { chromium } from "playwright-core";
 import { getAuthenticatedUser, invalidateAuthUserCache } from "@/lib/auth";
 import { invalidateTestCasesCache } from "@/lib/testCasesCache";
+import { generateContentWithFallback } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "placeholder-key",
-});
 
 const bb = new Browserbase({
   apiKey: process.env.BROWSERBASE_API_KEY || process.env.BROWSERBASE_BROWSERKEY || "placeholder-key",
@@ -278,14 +274,16 @@ DO NOT wrap the code in markdown backticks or explanations.
 Just return the executable code.
 `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+      const { response, modelUsed } = await generateContentWithFallback({
+        preferredModel: "gemini-2.5-flash",
         contents: prompt,
         config: {
           temperature: 0.2,
           maxOutputTokens: 2500,
         },
       });
+
+      console.log(`[Test Runner] Script generated using model: ${modelUsed}`);
 
       let generatedCode = response.text || "";
       generatedCode = generatedCode.replace(/^```javascript\s*/i, "");

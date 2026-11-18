@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { generateStackTestCases } from "@/lib/generateStackTestCases";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   return generateStackTestCases({
     req,
